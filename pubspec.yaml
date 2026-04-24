@@ -1,0 +1,29 @@
+name: queuego_mx
+description: Queue Assistance and On-site task platform for Mexico.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
+  firebase_core: ^3.13.1
+  firebase_auth: ^5.5.1
+  cloud_firestore: ^5.6.8
+  firebase_storage: ^12.4.6
+  firebase_messaging: ^15.2.6
+  google_maps_flutter: ^2.12.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
