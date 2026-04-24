@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/i18n/app_strings.dart';
@@ -49,7 +50,7 @@ class OpenTasksPage extends StatelessWidget {
 
   Future<void> _showCounterOfferDialog(BuildContext context, MvpTask task, String runnerId) async {
     final s = AppStrings.of(context);
-    final priceController = TextEditingController(text: '${task.suggestedTotalPriceMxn.toStringAsFixed(2)}');
+    final priceController = TextEditingController(text: '${task.totalPriceMxn.toStringAsFixed(2)}');
     await showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
@@ -60,13 +61,12 @@ class OpenTasksPage extends StatelessWidget {
           children: [
             Text('${s.t('estimatedTaskHours')}: ${task.estimatedTaskHours} h'),
             Text('${s.t('customerArrivalBufferHours')}: ${task.customerArrivalBufferHours} h'),
-            Text('${s.t('estimatedTotalHours')}: ${task.estimatedTotalHours} h'),
-            Text('${s.t('originalHourlyRate')}: ${task.hourlyRateMxn.toStringAsFixed(2)} MXN'),
-            Text('${s.t('originalSuggestedTotal')}: ${task.suggestedTotalPriceMxn.toStringAsFixed(2)} MXN'),
+            Text('${s.t('originalTotalPrice')}: ${task.totalPriceMxn.toStringAsFixed(2)} MXN'),
             const SizedBox(height: 8),
             TextField(
               controller: priceController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
               decoration: InputDecoration(labelText: s.t('counterOfferPriceInput')),
             ),
           ],
@@ -76,7 +76,7 @@ class OpenTasksPage extends StatelessWidget {
           FilledButton(
             onPressed: () {
               final value = double.tryParse(priceController.text.trim());
-              if (value == null || value <= 0) return;
+              if (value == null || value < 0) return;
               MockTaskRepository.instance.proposeCounterOffer(taskId: task.id, runnerId: runnerId, counterOfferTotalMxn: value);
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.t('counterOfferSubmitted'))));
@@ -393,8 +393,7 @@ class _TaskRunnerCard extends StatelessWidget {
             Text('${s.t('startTimeSlot')}: ${task.startTimeSlot}'),
             Text('${s.t('estimatedTaskHours')}: ${task.estimatedTaskHours} h'),
             Text('${s.t('customerArrivalBufferHours')}: ${task.customerArrivalBufferHours} h'),
-            Text('${s.t('hourlyRate')}: ${task.hourlyRateMxn.toStringAsFixed(2)} MXN'),
-            Text('${s.t('suggestedTotalPrice')}: ${task.displayTotalPriceMxn.toStringAsFixed(2)} MXN'),
+            Text('${s.t('totalPrice')}: ${task.displayTotalPriceMxn.toStringAsFixed(2)} MXN'),
             Text('${s.t('onsiteInstructions')}: ${task.instructions}'),
             if (task.progressNote != null) Text('${s.t('latestProgress')}: ${task.progressNote}'),
             const SizedBox(height: 12),

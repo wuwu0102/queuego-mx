@@ -86,7 +86,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   final _instructionsController = TextEditingController();
   final _estimatedTaskHoursController = TextEditingController(text: '1');
   final _customerArrivalBufferHoursController = TextEditingController(text: '0');
-  final _hourlyRateController = TextEditingController(text: '120');
+  final _totalPriceController = TextEditingController(text: '120');
 
   DateTime? _startDate;
   String? _startTimeSlot;
@@ -98,7 +98,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     _instructionsController.dispose();
     _estimatedTaskHoursController.dispose();
     _customerArrivalBufferHoursController.dispose();
-    _hourlyRateController.dispose();
+    _totalPriceController.dispose();
     super.dispose();
   }
 
@@ -118,10 +118,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       double.tryParse(_estimatedTaskHoursController.text.trim()) ?? 0;
   double get _customerArrivalBufferHours =>
       double.tryParse(_customerArrivalBufferHoursController.text.trim()) ?? 0;
-  double get _hourlyRate => double.tryParse(_hourlyRateController.text.trim()) ?? 0;
-
-  double get _estimatedTotalHours => _estimatedTaskHours + _customerArrivalBufferHours;
-  double get _suggestedTotalPrice => _estimatedTotalHours * _hourlyRate;
+  double get _totalPrice => double.tryParse(_totalPriceController.text.trim()) ?? 0;
 
   void _submit() {
     final s = AppStrings.of(context);
@@ -142,7 +139,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       startTimeSlot: _startTimeSlot!,
       estimatedTaskHours: _estimatedTaskHours,
       customerArrivalBufferHours: _customerArrivalBufferHours,
-      hourlyRateMxn: _hourlyRate,
+      totalPriceMxn: _totalPrice,
       customerId: widget.customerId,
     );
 
@@ -152,7 +149,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     _instructionsController.clear();
     _estimatedTaskHoursController.text = '1';
     _customerArrivalBufferHoursController.text = '0';
-    _hourlyRateController.text = '120';
+    _totalPriceController.text = '120';
     setState(() {
       _startDate = null;
       _startTimeSlot = null;
@@ -280,8 +277,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                     ),
                     const SizedBox(height: 10),
                     _DecimalInputField(
-                      controller: _hourlyRateController,
-                      labelText: s.t('hourlyRateMxnInput'),
+                      controller: _totalPriceController,
+                      labelText: s.t('totalPriceMxnInput'),
                       onChanged: (_) => setState(() {}),
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return s.t('requiredField');
@@ -290,9 +287,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 12),
-                    Text('${s.t('estimatedTotalHours')}: ${_estimatedTotalHours.toStringAsFixed(2)} h'),
-                    Text('${s.t('suggestedTotalPrice')}: ${_suggestedTotalPrice.toStringAsFixed(2)} MXN'),
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
@@ -368,8 +362,7 @@ class CustomerTasksPage extends StatelessWidget {
                             Text('${s.t('startTimeSlot')}: ${task.startTimeSlot}'),
                             Text('${s.t('estimatedTaskHours')}: ${task.estimatedTaskHours} h'),
                             Text('${s.t('customerArrivalBufferHours')}: ${task.customerArrivalBufferHours} h'),
-                            Text('${s.t('hourlyRate')}: ${task.hourlyRateMxn.toStringAsFixed(2)} MXN'),
-                            Text('${s.t('suggestedTotalPrice')}: ${task.displayTotalPriceMxn.toStringAsFixed(2)} MXN'),
+                            Text('${s.t('totalPrice')}: ${task.displayTotalPriceMxn.toStringAsFixed(2)} MXN'),
                             Text('${s.t('onsiteInstructions')}: ${task.instructions}'),
                             if (task.negotiationStatus == NegotiationStatus.pending && task.runnerCounterOfferTotalMxn != null) ...[
                               const Divider(height: 20),
