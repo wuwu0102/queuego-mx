@@ -245,7 +245,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                     ),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<String>(
-                      initialValue: _startTimeSlot,
+                      value: _startTimeSlot,
                       decoration: InputDecoration(labelText: s.t('startTimeSlotInput')),
                       items: _timeSlots
                           .map(
@@ -257,7 +257,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                     ),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<String>(
-                      initialValue: _estimatedDuration,
+                      value: _estimatedDuration,
                       decoration: InputDecoration(labelText: s.t('estimatedDurationInput')),
                       items: _durationKeys
                           .map(
