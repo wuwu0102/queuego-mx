@@ -42,9 +42,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Wrap(
             spacing: 8,
             children: [
-              ActionChip(label: const Text('繁中'), onPressed: () => widget.onLocaleChanged(const Locale('zh', 'TW'))),
-              ActionChip(label: const Text('English'), onPressed: () => widget.onLocaleChanged(const Locale('en'))),
               ActionChip(label: const Text('Español MX'), onPressed: () => widget.onLocaleChanged(const Locale('es', 'MX'))),
+              ActionChip(label: const Text('English'), onPressed: () => widget.onLocaleChanged(const Locale('en'))),
+              ActionChip(label: const Text('繁中'), onPressed: () => widget.onLocaleChanged(const Locale('zh', 'TW'))),
             ],
           ),
           const SizedBox(height: 20),
