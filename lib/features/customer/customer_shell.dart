@@ -279,7 +279,7 @@ class CustomerTasksPage extends StatelessWidget {
                                 Chip(
                                   backgroundColor: _statusColor(
                                     task.status,
-                                  ).withValues(alpha: 0.15),
+                                  ).withOpacity(0.15),
                                   label: Text(s.statusLabel(task.status.name)),
                                 ),
                                 const Spacer(),
