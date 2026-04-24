@@ -1,8 +1,11 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/i18n/app_strings.dart';
 import '../../core/models/mvp_task.dart';
+import '../../core/utils/image_picker_bridge.dart';
 import '../../data/mock_task_repository.dart';
 
 class RunnerShell extends StatefulWidget {
@@ -22,6 +25,7 @@ class _RunnerShellState extends State<RunnerShell> {
     final pages = [
       OpenTasksPage(runnerId: _runnerId),
       ActiveTasksPage(runnerId: _runnerId),
+      CompletedRunnerTasksPage(runnerId: _runnerId),
     ];
     return Scaffold(
       body: pages[current],
@@ -29,14 +33,9 @@ class _RunnerShellState extends State<RunnerShell> {
         selectedIndex: current,
         onDestinationSelected: (v) => setState(() => current = v),
         destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.search),
-            label: s.t('availableTasks'),
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.run_circle_outlined),
-            label: s.t('activeTasks'),
-          ),
+          NavigationDestination(icon: const Icon(Icons.search), label: s.t('availableTasks')),
+          NavigationDestination(icon: const Icon(Icons.run_circle_outlined), label: s.t('activeTasks')),
+          NavigationDestination(icon: const Icon(Icons.task_alt), label: s.t('completedTasks')),
         ],
       ),
     );
@@ -48,37 +47,39 @@ class OpenTasksPage extends StatelessWidget {
 
   final String runnerId;
 
-  Future<void> _showCounterOfferDialog(
-    BuildContext context,
-    MvpTask task,
-    String runnerId,
-  ) async {
+  Future<void> _showCounterOfferDialog(BuildContext context, MvpTask task, String runnerId) async {
     final s = AppStrings.of(context);
-    final priceController = TextEditingController(text: '${task.priceMxn}');
+    final priceController = TextEditingController(text: '${task.suggestedTotalPriceMxn.toStringAsFixed(2)}');
     await showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(s.t('proposeCounterOffer')),
-        content: TextField(
-          controller: priceController,
-          keyboardType: const TextInputType.numberWithOptions(),
-          decoration: InputDecoration(labelText: s.t('counterOfferPriceInput')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${s.t('estimatedTaskHours')}: ${task.estimatedTaskHours} h'),
+            Text('${s.t('customerArrivalBufferHours')}: ${task.customerArrivalBufferHours} h'),
+            Text('${s.t('estimatedTotalHours')}: ${task.estimatedTotalHours} h'),
+            Text('${s.t('originalHourlyRate')}: ${task.hourlyRateMxn.toStringAsFixed(2)} MXN'),
+            Text('${s.t('originalSuggestedTotal')}: ${task.suggestedTotalPriceMxn.toStringAsFixed(2)} MXN'),
+            const SizedBox(height: 8),
+            TextField(
+              controller: priceController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(labelText: s.t('counterOfferPriceInput')),
+            ),
+          ],
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           FilledButton(
             onPressed: () {
-              final value = int.tryParse(priceController.text.trim());
+              final value = double.tryParse(priceController.text.trim());
               if (value == null || value <= 0) return;
-              MockTaskRepository.instance.proposeCounterOffer(
-                taskId: task.id,
-                runnerId: runnerId,
-                counterOfferMxn: value,
-              );
+              MockTaskRepository.instance.proposeCounterOffer(taskId: task.id, runnerId: runnerId, counterOfferTotalMxn: value);
               Navigator.pop(context);
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text(s.t('counterOfferSubmitted'))));
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.t('counterOfferSubmitted'))));
             },
             child: Text(s.t('submitCounterOffer')),
           ),
@@ -111,23 +112,14 @@ class OpenTasksPage extends StatelessWidget {
                         children: [
                           FilledButton(
                             onPressed: () {
-                              MockTaskRepository.instance.acceptTask(
-                                taskId: task.id,
-                                runnerId: runnerId,
-                              );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(s.t('taskAccepted'))),
-                              );
+                              MockTaskRepository.instance.acceptTask(taskId: task.id, runnerId: runnerId);
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.t('taskAccepted'))));
                             },
                             child: Text(s.t('acceptTask')),
                           ),
                           const SizedBox(height: 8),
                           OutlinedButton(
-                            onPressed: () => _showCounterOfferDialog(
-                              context,
-                              task,
-                              runnerId,
-                            ),
+                            onPressed: () => _showCounterOfferDialog(context, task, runnerId),
                             child: Text(s.t('proposeCounterOffer')),
                           ),
                         ],
@@ -160,10 +152,7 @@ class ActiveTasksPage extends StatelessWidget {
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: tasks.length,
-                  itemBuilder: (context, index) => _RunnerTaskActionsCard(
-                    task: tasks[index],
-                    runnerId: runnerId,
-                  ),
+                  itemBuilder: (context, index) => _RunnerTaskActionsCard(task: tasks[index], runnerId: runnerId),
                 ),
         );
       },
@@ -193,54 +182,57 @@ class _RunnerTaskActionsCardState extends State<_RunnerTaskActionsCard> {
   Future<void> _showCheckInDialog(BuildContext context) async {
     final s = AppStrings.of(context);
     final noteController = TextEditingController();
-    final photoController = TextEditingController(text: 'https://mock.queuego/checkin.jpg');
+    Uint8List? imageBytes;
 
     await showDialog<void>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(s.t('arriveDialogTitle')),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: noteController,
-              decoration: InputDecoration(labelText: s.t('arrivePositionHint')),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: photoController,
-              decoration: InputDecoration(labelText: s.t('photoMockHint')),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(s.t('arriveDialogTitle')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: noteController, decoration: InputDecoration(labelText: s.t('arrivePositionHint')), maxLines: 2),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final selected = await pickImageBytes();
+                  if (selected == null) return;
+                  setDialogState(() => imageBytes = selected);
+                },
+                icon: const Icon(Icons.upload_file),
+                label: Text(s.t('uploadImage')),
+              ),
+              if (imageBytes != null) ...[
+                const SizedBox(height: 8),
+                Text(s.t('imageSelected')),
+                const SizedBox(height: 6),
+                ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.memory(imageBytes!, height: 120, fit: BoxFit.cover)),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                if (noteController.text.trim().isEmpty || imageBytes == null) return;
+                MockTaskRepository.instance.checkInTask(
+                  taskId: widget.task.id,
+                  runnerId: widget.runnerId,
+                  progressNote: noteController.text.trim(),
+                  checkInImageBytes: imageBytes!,
+                );
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.t('arrivedSaved'))));
+              },
+              child: Text(s.t('saveArrived')),
             ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () {
-              if (noteController.text.trim().isEmpty ||
-                  photoController.text.trim().isEmpty) {
-                return;
-              }
-              MockTaskRepository.instance.checkInTask(
-                taskId: widget.task.id,
-                runnerId: widget.runnerId,
-                progressNote: noteController.text.trim(),
-                checkInPhotoUrl: photoController.text.trim(),
-              );
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(s.t('arrivedSaved'))),
-              );
-            },
-            child: Text(s.t('saveArrived')),
-          ),
-        ],
       ),
     );
 
     noteController.dispose();
-    photoController.dispose();
   }
 
   Future<void> _showProgressDialog(BuildContext context) async {
@@ -251,25 +243,15 @@ class _RunnerTaskActionsCardState extends State<_RunnerTaskActionsCard> {
       context: context,
       builder: (_) => AlertDialog(
         title: Text(s.t('updateProgress')),
-        content: TextField(
-          controller: progressController,
-          decoration: InputDecoration(labelText: s.t('progressHint')),
-          maxLines: 2,
-        ),
+        content: TextField(controller: progressController, decoration: InputDecoration(labelText: s.t('progressHint')), maxLines: 2),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           FilledButton(
             onPressed: () {
               if (progressController.text.trim().isEmpty) return;
-              MockTaskRepository.instance.updateProgress(
-                taskId: widget.task.id,
-                runnerId: widget.runnerId,
-                progressNote: progressController.text.trim(),
-              );
+              MockTaskRepository.instance.updateProgress(taskId: widget.task.id, runnerId: widget.runnerId, progressNote: progressController.text.trim());
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(s.t('progressSaved'))),
-              );
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.t('progressSaved'))));
             },
             child: Text(s.t('updateProgress')),
           ),
@@ -289,41 +271,28 @@ class _RunnerTaskActionsCardState extends State<_RunnerTaskActionsCard> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (widget.task.status == MvpTaskStatus.accepted) ...[
-            FilledButton.icon(
-              onPressed: () => _showCheckInDialog(context),
-              icon: const Icon(Icons.pin_drop_outlined),
-              label: Text(s.t('arriveNow')),
-            ),
+            FilledButton.icon(onPressed: () => _showCheckInDialog(context), icon: const Icon(Icons.pin_drop_outlined), label: Text(s.t('arriveNow'))),
             const SizedBox(height: 8),
           ],
-          OutlinedButton.icon(
-            onPressed: () => _showProgressDialog(context),
-            icon: const Icon(Icons.update),
-            label: Text(s.t('updateProgress')),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _codeController,
-            decoration: InputDecoration(
-              labelText: s.t('enterHandoffCode'),
-              border: const OutlineInputBorder(),
+          if (widget.task.status == MvpTaskStatus.arrived || widget.task.status == MvpTaskStatus.inProgress)
+            FilledButton.tonal(
+              onPressed: () => MockTaskRepository.instance.markWaitingForCustomer(taskId: widget.task.id, runnerId: widget.runnerId),
+              child: Text(s.t('runnerNearlyThere')),
             ),
-          ),
+          if (widget.task.status == MvpTaskStatus.waitingForCustomer && widget.task.waitingStartedAt != null) ...[
+            Text('${s.t('customerArrivalBufferHours')}: ${widget.task.customerArrivalBufferHours} h'),
+            if (DateTime.now().difference(widget.task.waitingStartedAt!).inMinutes > (widget.task.customerArrivalBufferHours * 60))
+              Text(s.t('waitingExceeded'), style: const TextStyle(color: Colors.red)),
+          ],
+          const SizedBox(height: 8),
+          OutlinedButton.icon(onPressed: () => _showProgressDialog(context), icon: const Icon(Icons.update), label: Text(s.t('updateProgress'))),
+          const SizedBox(height: 8),
+          TextField(controller: _codeController, decoration: InputDecoration(labelText: s.t('enterHandoffCode'), border: const OutlineInputBorder())),
           const SizedBox(height: 8),
           FilledButton(
             onPressed: () {
-              final success = MockTaskRepository.instance.completeByHandoffCode(
-                taskId: widget.task.id,
-                runnerId: widget.runnerId,
-                handoffCode: _codeController.text,
-              );
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    success ? s.t('taskCompleted') : s.t('codeMismatch'),
-                  ),
-                ),
-              );
+              final success = MockTaskRepository.instance.completeByHandoffCode(taskId: widget.task.id, runnerId: widget.runnerId, handoffCode: _codeController.text);
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(success ? s.t('taskCompleted') : s.t('codeMismatch'))));
               if (success) _codeController.clear();
             },
             child: Text(s.t('completeByCode')),
@@ -331,6 +300,71 @@ class _RunnerTaskActionsCardState extends State<_RunnerTaskActionsCard> {
         ],
       ),
     );
+  }
+}
+
+class CompletedRunnerTasksPage extends StatelessWidget {
+  const CompletedRunnerTasksPage({super.key, required this.runnerId});
+
+  final String runnerId;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
+    return AnimatedBuilder(
+      animation: MockTaskRepository.instance,
+      builder: (context, _) {
+        final tasks = MockTaskRepository.instance.completedTasksForRunner(runnerId);
+        return Scaffold(
+          appBar: AppBar(title: Text(s.t('completedTasks'))),
+          body: tasks.isEmpty
+              ? Center(child: Text(s.t('noTasksYet')))
+              : ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: tasks.map((task) => Card(child: Padding(padding: const EdgeInsets.all(12), child: _RunnerReviewSection(task: task, runnerId: runnerId)))).toList(),
+                ),
+        );
+      },
+    );
+  }
+}
+
+class _RunnerReviewSection extends StatefulWidget {
+  const _RunnerReviewSection({required this.task, required this.runnerId});
+
+  final MvpTask task;
+  final String runnerId;
+
+  @override
+  State<_RunnerReviewSection> createState() => _RunnerReviewSectionState();
+}
+
+class _RunnerReviewSectionState extends State<_RunnerReviewSection> {
+  int _rating = 5;
+  final _commentController = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
+    if (MockTaskRepository.instance.hasReview(taskId: widget.task.id, fromUserId: widget.runnerId, toUserId: widget.task.customerId)) {
+      return const SizedBox.shrink();
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('${s.t('taskDescription')}: ${widget.task.description}'),
+      const SizedBox(height: 8),
+      Text(s.t('rateCustomer')),
+      Wrap(spacing: 6, children: List.generate(5, (i) => ChoiceChip(label: Text('${i + 1}★'), selected: _rating == i + 1, onSelected: (_) => setState(() => _rating = i + 1)))),
+      const SizedBox(height: 8),
+      TextField(controller: _commentController, decoration: InputDecoration(labelText: s.t('ratingCommentHint'))),
+      const SizedBox(height: 8),
+      FilledButton(
+        onPressed: () {
+          MockTaskRepository.instance.submitReview(taskId: widget.task.id, fromUserId: widget.runnerId, toUserId: widget.task.customerId, rating: _rating, comment: _commentController.text.trim().isEmpty ? null : _commentController.text.trim());
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.t('reviewSubmitted'))));
+        },
+        child: Text(s.t('submitReview')),
+      ),
+    ]);
   }
 }
 
@@ -357,11 +391,12 @@ class _TaskRunnerCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text('${s.t('startDate')}: ${DateFormat('yyyy-MM-dd').format(task.startDate)}'),
             Text('${s.t('startTimeSlot')}: ${task.startTimeSlot}'),
-            Text('${s.t('estimatedDuration')}: ${s.t(task.estimatedDuration)}'),
-            Text('${s.t('price')}: ${task.displayPriceMxn} MXN'),
+            Text('${s.t('estimatedTaskHours')}: ${task.estimatedTaskHours} h'),
+            Text('${s.t('customerArrivalBufferHours')}: ${task.customerArrivalBufferHours} h'),
+            Text('${s.t('hourlyRate')}: ${task.hourlyRateMxn.toStringAsFixed(2)} MXN'),
+            Text('${s.t('suggestedTotalPrice')}: ${task.displayTotalPriceMxn.toStringAsFixed(2)} MXN'),
             Text('${s.t('onsiteInstructions')}: ${task.instructions}'),
-            if (task.progressNote != null)
-              Text('${s.t('latestProgress')}: ${task.progressNote}'),
+            if (task.progressNote != null) Text('${s.t('latestProgress')}: ${task.progressNote}'),
             const SizedBox(height: 12),
             bottom,
           ],
