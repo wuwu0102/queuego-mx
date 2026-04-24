@@ -23,7 +23,7 @@ class MvpTask {
     required this.startTimeSlot,
     required this.estimatedTaskHours,
     required this.customerArrivalBufferHours,
-    required this.hourlyRateMxn,
+    required this.totalPriceMxn,
     required this.status,
     required this.customerId,
     required this.runnerId,
@@ -44,7 +44,7 @@ class MvpTask {
   final String startTimeSlot;
   final double estimatedTaskHours;
   final double customerArrivalBufferHours;
-  final double hourlyRateMxn;
+  final double totalPriceMxn;
   final MvpTaskStatus status;
   final String customerId;
   final String? runnerId;
@@ -62,16 +62,11 @@ class MvpTask {
       status == MvpTaskStatus.inProgress ||
       status == MvpTaskStatus.waitingForCustomer;
 
-  double get estimatedTotalHours =>
-      estimatedTaskHours + customerArrivalBufferHours;
-
-  double get suggestedTotalPriceMxn => estimatedTotalHours * hourlyRateMxn;
-
   double get displayTotalPriceMxn =>
       negotiationStatus == NegotiationStatus.accepted &&
               runnerCounterOfferTotalMxn != null
           ? runnerCounterOfferTotalMxn!
-          : suggestedTotalPriceMxn;
+          : totalPriceMxn;
 
   MvpTask copyWith({
     String? id,
@@ -82,7 +77,7 @@ class MvpTask {
     String? startTimeSlot,
     double? estimatedTaskHours,
     double? customerArrivalBufferHours,
-    double? hourlyRateMxn,
+    double? totalPriceMxn,
     MvpTaskStatus? status,
     String? customerId,
     String? runnerId,
@@ -109,7 +104,7 @@ class MvpTask {
       estimatedTaskHours: estimatedTaskHours ?? this.estimatedTaskHours,
       customerArrivalBufferHours:
           customerArrivalBufferHours ?? this.customerArrivalBufferHours,
-      hourlyRateMxn: hourlyRateMxn ?? this.hourlyRateMxn,
+      totalPriceMxn: totalPriceMxn ?? this.totalPriceMxn,
       status: status ?? this.status,
       customerId: customerId ?? this.customerId,
       runnerId: clearRunnerId ? null : (runnerId ?? this.runnerId),

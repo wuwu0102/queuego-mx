@@ -49,7 +49,7 @@ class MockTaskRepository extends ChangeNotifier {
     required String startTimeSlot,
     required double estimatedTaskHours,
     required double customerArrivalBufferHours,
-    required double hourlyRateMxn,
+    required double totalPriceMxn,
     required String customerId,
   }) {
     final task = MvpTask(
@@ -61,7 +61,7 @@ class MockTaskRepository extends ChangeNotifier {
       startTimeSlot: startTimeSlot,
       estimatedTaskHours: estimatedTaskHours,
       customerArrivalBufferHours: customerArrivalBufferHours,
-      hourlyRateMxn: hourlyRateMxn,
+      totalPriceMxn: totalPriceMxn,
       status: MvpTaskStatus.open,
       customerId: customerId,
       runnerId: null,
@@ -100,7 +100,7 @@ class MockTaskRepository extends ChangeNotifier {
     final index = _tasks.indexWhere((task) => task.id == taskId);
     if (index < 0) return false;
     final task = _tasks[index];
-    if (task.status != MvpTaskStatus.open || counterOfferTotalMxn <= 0) {
+    if (task.status != MvpTaskStatus.open || counterOfferTotalMxn < 0) {
       return false;
     }
 
