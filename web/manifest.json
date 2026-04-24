@@ -1,0 +1,9 @@
+{
+  "name": "QueueGo MX",
+  "short_name": "QueueGo",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFFFFF",
+  "description": "QueueGo MX Flutter web app."
+}
