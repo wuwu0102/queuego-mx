@@ -1,8 +1,10 @@
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 
 import '../core/models/mvp_task.dart';
+import '../core/models/review_item.dart';
 
 class MockTaskRepository extends ChangeNotifier {
   MockTaskRepository._();
@@ -10,9 +12,11 @@ class MockTaskRepository extends ChangeNotifier {
   static final MockTaskRepository instance = MockTaskRepository._();
 
   final List<MvpTask> _tasks = [];
+  final List<ReviewItem> _reviews = [];
   final Random _random = Random();
 
   List<MvpTask> get tasks => List.unmodifiable(_tasks);
+  List<ReviewItem> get reviews => List.unmodifiable(_reviews);
 
   List<MvpTask> tasksForCustomer(String customerId) =>
       _tasks.where((task) => task.customerId == customerId).toList()
@@ -28,14 +32,24 @@ class MockTaskRepository extends ChangeNotifier {
           .toList()
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
+  List<MvpTask> completedTasksForRunner(String runnerId) =>
+      _tasks
+          .where(
+            (task) => task.runnerId == runnerId &&
+                task.status == MvpTaskStatus.completed,
+          )
+          .toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
   MvpTask createTask({
     required String locationText,
     required String description,
     required String instructions,
     required DateTime startDate,
     required String startTimeSlot,
-    required String estimatedDuration,
-    required int priceMxn,
+    required double estimatedTaskHours,
+    required double customerArrivalBufferHours,
+    required double hourlyRateMxn,
     required String customerId,
   }) {
     final task = MvpTask(
@@ -45,15 +59,17 @@ class MockTaskRepository extends ChangeNotifier {
       instructions: instructions,
       startDate: startDate,
       startTimeSlot: startTimeSlot,
-      estimatedDuration: estimatedDuration,
-      priceMxn: priceMxn,
+      estimatedTaskHours: estimatedTaskHours,
+      customerArrivalBufferHours: customerArrivalBufferHours,
+      hourlyRateMxn: hourlyRateMxn,
       status: MvpTaskStatus.open,
       customerId: customerId,
       runnerId: null,
-      checkInPhotoUrl: null,
+      checkInImageBytes: null,
       progressNote: null,
       handoffCode: _generateHandoffCode(),
       createdAt: DateTime.now(),
+      waitingStartedAt: null,
     );
     _tasks.insert(0, task);
     notifyListeners();
@@ -79,18 +95,19 @@ class MockTaskRepository extends ChangeNotifier {
   bool proposeCounterOffer({
     required String taskId,
     required String runnerId,
-    required int counterOfferMxn,
+    required double counterOfferTotalMxn,
   }) {
     final index = _tasks.indexWhere((task) => task.id == taskId);
     if (index < 0) return false;
     final task = _tasks[index];
-    if (task.status != MvpTaskStatus.open || counterOfferMxn <= 0) {
+    if (task.status != MvpTaskStatus.open || counterOfferTotalMxn <= 0) {
       return false;
     }
 
     _tasks[index] = task.copyWith(
       runnerId: runnerId,
-      runnerCounterOfferMxn: counterOfferMxn,
+      status: MvpTaskStatus.negotiating,
+      runnerCounterOfferTotalMxn: counterOfferTotalMxn,
       negotiationStatus: NegotiationStatus.pending,
     );
     notifyListeners();
@@ -126,7 +143,7 @@ class MockTaskRepository extends ChangeNotifier {
     required String taskId,
     required String runnerId,
     required String progressNote,
-    required String checkInPhotoUrl,
+    required Uint8List checkInImageBytes,
   }) {
     final index = _tasks.indexWhere((task) => task.id == taskId);
     if (index < 0) return false;
@@ -138,7 +155,25 @@ class MockTaskRepository extends ChangeNotifier {
     _tasks[index] = task.copyWith(
       status: MvpTaskStatus.arrived,
       progressNote: progressNote,
-      checkInPhotoUrl: checkInPhotoUrl,
+      checkInImageBytes: checkInImageBytes,
+    );
+    notifyListeners();
+    return true;
+  }
+
+  bool markWaitingForCustomer({required String taskId, required String runnerId}) {
+    final index = _tasks.indexWhere((task) => task.id == taskId);
+    if (index < 0) return false;
+    final task = _tasks[index];
+    if (task.runnerId != runnerId ||
+        (task.status != MvpTaskStatus.arrived &&
+            task.status != MvpTaskStatus.inProgress)) {
+      return false;
+    }
+
+    _tasks[index] = task.copyWith(
+      status: MvpTaskStatus.waitingForCustomer,
+      waitingStartedAt: DateTime.now(),
     );
     notifyListeners();
     return true;
@@ -155,7 +190,9 @@ class MockTaskRepository extends ChangeNotifier {
     if (!task.isRunnerActive || task.runnerId != runnerId) return false;
 
     _tasks[index] = task.copyWith(
-      status: MvpTaskStatus.inProgress,
+      status: task.status == MvpTaskStatus.waitingForCustomer
+          ? MvpTaskStatus.waitingForCustomer
+          : MvpTaskStatus.inProgress,
       progressNote: progressNote,
     );
     notifyListeners();
@@ -171,15 +208,70 @@ class MockTaskRepository extends ChangeNotifier {
     if (index < 0) return false;
     final task = _tasks[index];
     if (!task.isRunnerActive || task.runnerId != runnerId) return false;
-    if (task.handoffCode.trim().toUpperCase() !=
-        handoffCode.trim().toUpperCase()) {
+
+    final taskCode = _normalizeCode(task.handoffCode);
+    final inputCode = _normalizeCode(handoffCode);
+    final inputDigitsOnly = inputCode.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (taskCode != inputCode && !taskCode.endsWith(inputDigitsOnly)) {
       return false;
     }
 
-    _tasks[index] = task.copyWith(status: MvpTaskStatus.completed);
+    _tasks[index] = task.copyWith(
+      status: MvpTaskStatus.completed,
+      clearWaitingStartedAt: true,
+    );
     notifyListeners();
     return true;
   }
+
+  bool submitReview({
+    required String taskId,
+    required String fromUserId,
+    required String toUserId,
+    required int rating,
+    String? comment,
+  }) {
+    if (rating < 1 || rating > 5) return false;
+    final matches = _tasks.where((item) => item.id == taskId);
+    if (matches.isEmpty || matches.first.status != MvpTaskStatus.completed) return false;
+    final task = matches.first;
+
+    final duplicate = _reviews.any(
+      (item) =>
+          item.taskId == taskId &&
+          item.fromUserId == fromUserId &&
+          item.toUserId == toUserId,
+    );
+    if (duplicate) return false;
+
+    _reviews.add(
+      ReviewItem(
+        taskId: taskId,
+        fromUserId: fromUserId,
+        toUserId: toUserId,
+        rating: rating,
+        comment: comment,
+        createdAt: DateTime.now(),
+      ),
+    );
+    notifyListeners();
+    return true;
+  }
+
+  bool hasReview({
+    required String taskId,
+    required String fromUserId,
+    required String toUserId,
+  }) => _reviews.any(
+    (item) =>
+        item.taskId == taskId &&
+        item.fromUserId == fromUserId &&
+        item.toUserId == toUserId,
+  );
+
+  String _normalizeCode(String code) =>
+      code.replaceAll(RegExp(r'[\s-]'), '').toUpperCase();
 
   String _generateHandoffCode() {
     final number = 1000 + _random.nextInt(9000);
