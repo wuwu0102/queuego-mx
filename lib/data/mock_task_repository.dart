@@ -32,7 +32,9 @@ class MockTaskRepository extends ChangeNotifier {
     required String locationText,
     required String description,
     required String instructions,
-    required DateTime startTime,
+    required DateTime startDate,
+    required String startTimeSlot,
+    required String estimatedDuration,
     required int priceMxn,
     required String customerId,
   }) {
@@ -41,7 +43,9 @@ class MockTaskRepository extends ChangeNotifier {
       locationText: locationText,
       description: description,
       instructions: instructions,
-      startTime: startTime,
+      startDate: startDate,
+      startTimeSlot: startTimeSlot,
+      estimatedDuration: estimatedDuration,
       priceMxn: priceMxn,
       status: MvpTaskStatus.open,
       customerId: customerId,
@@ -62,8 +66,58 @@ class MockTaskRepository extends ChangeNotifier {
     final task = _tasks[index];
     if (task.status != MvpTaskStatus.open) return false;
 
-    _tasks[index] =
-        task.copyWith(status: MvpTaskStatus.accepted, runnerId: runnerId);
+    _tasks[index] = task.copyWith(
+      status: MvpTaskStatus.accepted,
+      runnerId: runnerId,
+      negotiationStatus: NegotiationStatus.none,
+      clearRunnerCounterOfferMxn: true,
+    );
+    notifyListeners();
+    return true;
+  }
+
+  bool proposeCounterOffer({
+    required String taskId,
+    required String runnerId,
+    required int counterOfferMxn,
+  }) {
+    final index = _tasks.indexWhere((task) => task.id == taskId);
+    if (index < 0) return false;
+    final task = _tasks[index];
+    if (task.status != MvpTaskStatus.open || counterOfferMxn <= 0) {
+      return false;
+    }
+
+    _tasks[index] = task.copyWith(
+      runnerId: runnerId,
+      runnerCounterOfferMxn: counterOfferMxn,
+      negotiationStatus: NegotiationStatus.pending,
+    );
+    notifyListeners();
+    return true;
+  }
+
+  bool respondCounterOffer({
+    required String taskId,
+    required String customerId,
+    required bool accepted,
+  }) {
+    final index = _tasks.indexWhere((task) => task.id == taskId);
+    if (index < 0) return false;
+    final task = _tasks[index];
+    if (task.customerId != customerId ||
+        task.negotiationStatus != NegotiationStatus.pending ||
+        task.runnerId == null) {
+      return false;
+    }
+
+    _tasks[index] = task.copyWith(
+      status: accepted ? MvpTaskStatus.accepted : MvpTaskStatus.open,
+      negotiationStatus: accepted
+          ? NegotiationStatus.accepted
+          : NegotiationStatus.rejected,
+      clearRunnerId: !accepted,
+    );
     notifyListeners();
     return true;
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/i18n/app_strings.dart';
 import '../../core/models/mvp_task.dart';
@@ -47,6 +48,46 @@ class OpenTasksPage extends StatelessWidget {
 
   final String runnerId;
 
+  Future<void> _showCounterOfferDialog(
+    BuildContext context,
+    MvpTask task,
+    String runnerId,
+  ) async {
+    final s = AppStrings.of(context);
+    final priceController = TextEditingController(text: '${task.priceMxn}');
+    await showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(s.t('proposeCounterOffer')),
+        content: TextField(
+          controller: priceController,
+          keyboardType: const TextInputType.numberWithOptions(),
+          decoration: InputDecoration(labelText: s.t('counterOfferPriceInput')),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              final value = int.tryParse(priceController.text.trim());
+              if (value == null || value <= 0) return;
+              MockTaskRepository.instance.proposeCounterOffer(
+                taskId: task.id,
+                runnerId: runnerId,
+                counterOfferMxn: value,
+              );
+              Navigator.pop(context);
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(s.t('counterOfferSubmitted'))));
+            },
+            child: Text(s.t('submitCounterOffer')),
+          ),
+        ],
+      ),
+    );
+    priceController.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
@@ -65,20 +106,31 @@ class OpenTasksPage extends StatelessWidget {
                     final task = openTasks[index];
                     return _TaskRunnerCard(
                       task: task,
-                      bottom: SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          onPressed: () {
-                            MockTaskRepository.instance.acceptTask(
-                              taskId: task.id,
-                              runnerId: runnerId,
-                            );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(s.t('taskAccepted'))),
-                            );
-                          },
-                          child: Text(s.t('acceptTask')),
-                        ),
+                      bottom: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          FilledButton(
+                            onPressed: () {
+                              MockTaskRepository.instance.acceptTask(
+                                taskId: task.id,
+                                runnerId: runnerId,
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(s.t('taskAccepted'))),
+                              );
+                            },
+                            child: Text(s.t('acceptTask')),
+                          ),
+                          const SizedBox(height: 8),
+                          OutlinedButton(
+                            onPressed: () => _showCounterOfferDialog(
+                              context,
+                              task,
+                              runnerId,
+                            ),
+                            child: Text(s.t('proposeCounterOffer')),
+                          ),
+                        ],
                       ),
                     );
                   },
@@ -299,13 +351,15 @@ class _TaskRunnerCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(task.locationText, style: Theme.of(context).textTheme.titleMedium),
+            Text('${s.t('locationLabel')}: ${task.locationText}', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 6),
-            Text(task.description),
+            Text('${s.t('taskDescription')}: ${task.description}'),
             const SizedBox(height: 6),
+            Text('${s.t('startDate')}: ${DateFormat('yyyy-MM-dd').format(task.startDate)}'),
+            Text('${s.t('startTimeSlot')}: ${task.startTimeSlot}'),
+            Text('${s.t('estimatedDuration')}: ${s.t(task.estimatedDuration)}'),
+            Text('${s.t('price')}: ${task.displayPriceMxn} MXN'),
             Text('${s.t('onsiteInstructions')}: ${task.instructions}'),
-            Text('${s.t('startTime')}: ${task.startTime.toLocal()}'),
-            Text('${s.t('price')}: ${task.priceMxn} MXN'),
             if (task.progressNote != null)
               Text('${s.t('latestProgress')}: ${task.progressNote}'),
             const SizedBox(height: 12),

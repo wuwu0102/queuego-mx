@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/i18n/app_strings.dart';
 import '../../core/models/mvp_task.dart';
@@ -60,32 +61,73 @@ class CreateTaskPage extends StatefulWidget {
 }
 
 class _CreateTaskPageState extends State<CreateTaskPage> {
+  static const _timeSlots = [
+    '04:00',
+    '05:00',
+    '06:00',
+    '07:00',
+    '08:00',
+    '09:00',
+    '10:00',
+    '11:00',
+    '12:00',
+    '13:00',
+    '14:00',
+    '15:00',
+    '16:00',
+    '17:00',
+    '18:00',
+  ];
+
+  static const _durationKeys = [
+    'duration_30m',
+    'duration_1h',
+    'duration_2h',
+    'duration_3h',
+    'duration_half_day',
+    'duration_full_day',
+    'duration_not_sure',
+  ];
+
   final _formKey = GlobalKey<FormState>();
   final _locationController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _instructionsController = TextEditingController();
-  final _timeController = TextEditingController();
   final _priceController = TextEditingController();
+
+  DateTime? _startDate;
+  String? _startTimeSlot;
+  String? _estimatedDuration;
 
   @override
   void dispose() {
     _locationController.dispose();
     _descriptionController.dispose();
     _instructionsController.dispose();
-    _timeController.dispose();
     _priceController.dispose();
     super.dispose();
   }
 
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _startDate ?? now,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 2),
+    );
+    if (picked == null) return;
+    setState(() => _startDate = DateTime(picked.year, picked.month, picked.day));
+  }
+
   void _submit() {
-    if (!_formKey.currentState!.validate()) return;
-    final s = AppStrings.of(context);
-    final normalized = _timeController.text.trim().replaceFirst(' ', 'T');
-    final parsedStartTime = DateTime.tryParse(normalized);
-    if (parsedStartTime == null) {
+    if (!_formKey.currentState!.validate() ||
+        _startDate == null ||
+        _startTimeSlot == null ||
+        _estimatedDuration == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(s.t('startTimeFormatHint'))));
+      ).showSnackBar(SnackBar(content: Text(AppStrings.of(context).t('requiredField'))));
       return;
     }
 
@@ -93,7 +135,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       locationText: _locationController.text.trim(),
       description: _descriptionController.text.trim(),
       instructions: _instructionsController.text.trim(),
-      startTime: parsedStartTime,
+      startDate: _startDate!,
+      startTimeSlot: _startTimeSlot!,
+      estimatedDuration: _estimatedDuration!,
       priceMxn: int.parse(_priceController.text.trim()),
       customerId: widget.customerId,
     );
@@ -102,13 +146,17 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     _locationController.clear();
     _descriptionController.clear();
     _instructionsController.clear();
-    _timeController.clear();
     _priceController.clear();
+    setState(() {
+      _startDate = null;
+      _startTimeSlot = null;
+      _estimatedDuration = null;
+    });
 
     widget.onCreated();
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text(s.t('taskPublished'))));
+    ).showSnackBar(SnackBar(content: Text(AppStrings.of(context).t('taskPublished'))));
   }
 
   @override
@@ -137,7 +185,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _locationController,
-                      decoration: InputDecoration(labelText: s.t('locationInput')),
+                      decoration: InputDecoration(
+                        labelText: s.t('locationInput'),
+                        helperText: s.t('locationHint'),
+                      ),
                       validator: (v) =>
                           (v == null || v.trim().isEmpty)
                               ? s.t('requiredField')
@@ -170,16 +221,54 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                               : null,
                     ),
                     const SizedBox(height: 10),
-                    TextFormField(
-                      controller: _timeController,
+                    InputDecorator(
                       decoration: InputDecoration(
-                        labelText: s.t('startTimeInput'),
-                        hintText: '2026-04-24 14:30',
+                        labelText: s.t('startDateInput'),
+                        border: const OutlineInputBorder(),
+                        errorText: _startDate == null ? s.t('requiredField') : null,
                       ),
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty)
-                              ? s.t('requiredField')
-                              : null,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _startDate == null
+                                  ? s.t('selectDate')
+                                  : DateFormat('yyyy-MM-dd').format(_startDate!),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: _pickDate,
+                            icon: const Icon(Icons.calendar_month),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      initialValue: _startTimeSlot,
+                      decoration: InputDecoration(labelText: s.t('startTimeSlotInput')),
+                      items: _timeSlots
+                          .map(
+                            (slot) => DropdownMenuItem(value: slot, child: Text(slot)),
+                          )
+                          .toList(),
+                      onChanged: (v) => setState(() => _startTimeSlot = v),
+                      validator: (v) => v == null ? s.t('requiredField') : null,
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      initialValue: _estimatedDuration,
+                      decoration: InputDecoration(labelText: s.t('estimatedDurationInput')),
+                      items: _durationKeys
+                          .map(
+                            (durationKey) => DropdownMenuItem(
+                              value: durationKey,
+                              child: Text(s.t(durationKey)),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) => setState(() => _estimatedDuration = v),
+                      validator: (v) => v == null ? s.t('requiredField') : null,
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
@@ -230,6 +319,11 @@ class CustomerTasksPage extends StatelessWidget {
     };
   }
 
+  bool _isGoogleMapsLink(String text) {
+    final normalized = text.toLowerCase();
+    return normalized.contains('google.com/maps') || normalized.contains('maps.app.goo.gl');
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
@@ -256,15 +350,61 @@ class CustomerTasksPage extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              task.locationText,
+                              '${s.t('locationLabel')}: ${task.locationText}',
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
+                            if (_isGoogleMapsLink(task.locationText))
+                              TextButton.icon(
+                                onPressed: () {},
+                                icon: const Icon(Icons.open_in_new),
+                                label: Text(s.t('openLocation')),
+                              ),
                             const SizedBox(height: 6),
-                            Text(task.description),
+                            Text('${s.t('taskDescription')}: ${task.description}'),
                             const SizedBox(height: 6),
-                            Text('${s.t('startTime')}: ${task.startTime.toLocal()}'),
-                            Text('${s.t('price')}: ${task.priceMxn} MXN'),
+                            Text(
+                              '${s.t('startDate')}: ${DateFormat('yyyy-MM-dd').format(task.startDate)}',
+                            ),
+                            Text('${s.t('startTimeSlot')}: ${task.startTimeSlot}'),
+                            Text(
+                              '${s.t('estimatedDuration')}: ${s.t(task.estimatedDuration)}',
+                            ),
+                            Text('${s.t('price')}: ${task.displayPriceMxn} MXN'),
                             Text('${s.t('onsiteInstructions')}: ${task.instructions}'),
+                            if (task.negotiationStatus == NegotiationStatus.pending &&
+                                task.runnerCounterOfferMxn != null) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                '${s.t('runnerCounterOffer')}: ${task.runnerCounterOfferMxn} MXN',
+                                style: const TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                children: [
+                                  FilledButton(
+                                    onPressed: () {
+                                      MockTaskRepository.instance.respondCounterOffer(
+                                        taskId: task.id,
+                                        customerId: customerId,
+                                        accepted: true,
+                                      );
+                                    },
+                                    child: Text(s.t('acceptCounterOffer')),
+                                  ),
+                                  OutlinedButton(
+                                    onPressed: () {
+                                      MockTaskRepository.instance.respondCounterOffer(
+                                        taskId: task.id,
+                                        customerId: customerId,
+                                        accepted: false,
+                                      );
+                                    },
+                                    child: Text(s.t('rejectCounterOffer')),
+                                  ),
+                                ],
+                              ),
+                            ],
                             if (task.progressNote != null) ...[
                               const SizedBox(height: 4),
                               Text('${s.t('latestProgress')}: ${task.progressNote}'),
