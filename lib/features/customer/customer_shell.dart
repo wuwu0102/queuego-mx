@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/i18n/app_strings.dart';
 import '../../core/models/firestore_task.dart';
 import '../../core/models/task_application.dart';
+import '../../core/models/task_message.dart';
 import '../../core/services/firestore_task_service.dart';
 
 class CustomerShell extends StatefulWidget {
@@ -316,7 +317,7 @@ class OwnerTasksPage extends StatelessWidget {
             children: [
               const _ModeHeader(),
               const SizedBox(height: 10),
-              ...tasks.map((task) => _TaskCard(task: task)),
+              ...tasks.map((task) => _TaskCard(task: task, ownerId: ownerId)),
             ],
           );
         },
@@ -326,9 +327,10 @@ class OwnerTasksPage extends StatelessWidget {
 }
 
 class _TaskCard extends StatelessWidget {
-  const _TaskCard({required this.task});
+  const _TaskCard({required this.task, required this.ownerId});
 
   final FirestoreTask task;
+  final String ownerId;
 
   bool get _showCancel => task.status == 'open' || task.status == 'negotiating';
 
@@ -361,6 +363,30 @@ class _TaskCard extends StatelessWidget {
             Text('${s.t('startDate')}: ${task.startDate} ${task.startTime}'),
             Text('${s.t('totalPrice')}: ${task.price} MXN'),
             Text('${s.t('status')}: ${s.statusLabel(task.status)}'),
+            if (task.status == 'arrived') ...[
+              const SizedBox(height: 6),
+              Text(s.t('runnerArrivedNotice')),
+              if ((task.progressNote ?? '').isNotEmpty)
+                Text('${s.t('latestProgress')}: ${task.progressNote}'),
+              if (task.arrivedAt != null)
+                Text('${s.t('arrivedAt')}: ${DateFormat('yyyy-MM-dd HH:mm').format(task.arrivedAt!)}'),
+            ],
+            if (task.status == 'waiting_for_customer') ...[
+              const SizedBox(height: 6),
+              Text(s.t('runnerNotifiedYou')),
+              Text(
+                s.t('runnerReadyNotice'),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+              Text(s.t('customerWaitHoursNotice').replaceAll('{hours}', '${task.waitHours}')),
+              if ((task.progressNote ?? '').isNotEmpty)
+                Text('${s.t('latestProgress')}: ${task.progressNote}'),
+              if (task.readyForHandoffAt != null)
+                Text(
+                  '${s.t('readyForHandoffAt')}: '
+                  '${DateFormat('yyyy-MM-dd HH:mm').format(task.readyForHandoffAt!)}',
+                ),
+            ],
             if (task.status == 'open')
               StreamBuilder<int>(
                 stream: FirestoreTaskService.instance.streamTaskApplicationCount(task.id),
@@ -378,9 +404,51 @@ class _TaskCard extends StatelessWidget {
                   label: Text(s.t('cancelTask')),
                 ),
               ),
+            if (_showMessageArea(task.status))
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: _CustomerTaskMessagesSection(task: task, ownerId: ownerId),
+              ),
+            if (_showWhatsAppButton(task.status))
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: TextButton.icon(
+                  onPressed: () => _showWhatsAppHint(context),
+                  icon: const Icon(Icons.chat_outlined),
+                  label: Text(s.t('requestWhatsappContact')),
+                ),
+              ),
+            if (task.status == 'completed')
+              TextButton(
+                onPressed: () {},
+                child: Text(s.t('rateRunner')),
+              ),
           ],
         ),
         trailing: const Icon(Icons.chevron_right),
+      ),
+    );
+  }
+
+  bool _showMessageArea(String status) =>
+      status == 'accepted' || status == 'arrived' || status == 'waiting_for_customer';
+
+  bool _showWhatsAppButton(String status) =>
+      status == 'accepted' || status == 'arrived' || status == 'waiting_for_customer';
+
+  void _showWhatsAppHint(BuildContext context) {
+    final s = AppStrings.of(context);
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(s.t('requestWhatsappContact')),
+        content: Text(s.t('whatsappFallbackHint')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(s.t('cancel')),
+          ),
+        ],
       ),
     );
   }
@@ -505,6 +573,110 @@ class _NumberField extends StatelessWidget {
         return null;
       },
       onChanged: onChanged,
+    );
+  }
+}
+
+class _CustomerTaskMessagesSection extends StatefulWidget {
+  const _CustomerTaskMessagesSection({required this.task, required this.ownerId});
+
+  final FirestoreTask task;
+  final String ownerId;
+
+  @override
+  State<_CustomerTaskMessagesSection> createState() =>
+      _CustomerTaskMessagesSectionState();
+}
+
+class _CustomerTaskMessagesSectionState extends State<_CustomerTaskMessagesSection> {
+  final _controller = TextEditingController();
+  bool _sending = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    setState(() => _sending = true);
+    try {
+      await FirestoreTaskService.instance.sendTaskMessage(
+        taskId: widget.task.id,
+        senderId: widget.ownerId,
+        senderRole: 'customer',
+        text: text,
+      );
+      _controller.clear();
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(s.t('taskMessages'), style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 6),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(s.t('platformSafetyReminder')),
+        ),
+        const SizedBox(height: 8),
+        StreamBuilder<List<TaskMessage>>(
+          stream: FirestoreTaskService.instance.streamTaskMessages(widget.task.id),
+          builder: (context, snapshot) {
+            final items = snapshot.data ?? const <TaskMessage>[];
+            return Column(
+              children: [
+                SizedBox(
+                  height: 160,
+                  child: ListView(
+                    children: items
+                        .map(
+                          (m) => ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(m.text),
+                            subtitle: Text(
+                              '${m.senderRole} • ${m.createdAt == null ? '-' : DateFormat('MM/dd HH:mm').format(m.createdAt!)}',
+                            ),
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        minLines: 1,
+                        maxLines: 2,
+                        decoration: InputDecoration(hintText: s.t('messageInputHint')),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _sending ? null : _send,
+                      icon: const Icon(Icons.send),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
+      ],
     );
   }
 }

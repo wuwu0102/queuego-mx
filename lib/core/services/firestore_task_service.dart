@@ -1,7 +1,9 @@
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/firestore_task.dart';
 import '../models/task_application.dart';
+import '../models/task_message.dart';
 
 class FirestoreTaskService {
   FirestoreTaskService._();
@@ -25,6 +27,9 @@ class FirestoreTaskService {
     'pending',
     'accepted',
   ];
+
+  CollectionReference<Map<String, dynamic>> _messages(String taskId) =>
+      _tasks.doc(taskId).collection('messages');
 
   Future<void> addTask({
     required String title,
@@ -52,6 +57,13 @@ class FirestoreTaskService {
       'createdAt': FieldValue.serverTimestamp(),
       'ownerId': ownerId,
       'accepterId': null,
+      'arrivedAt': null,
+      'progressNote': null,
+      'progressUpdatedAt': null,
+      'readyForHandoffAt': null,
+      'completedAt': null,
+      'whatsappNumber': null,
+      'handoffCode': null,
     });
   }
 
@@ -187,6 +199,7 @@ class FirestoreTaskService {
         'status': 'accepted',
         'accepterId': application.runnerId,
         'price': application.proposedPriceMxn ?? task.price,
+        'handoffCode': _generateHandoffCode(),
       });
     });
   }
@@ -197,6 +210,104 @@ class FirestoreTaskService {
 
   Future<void> cancelTask(String taskId) async {
     await _tasks.doc(taskId).update({'status': 'cancelled'});
+  }
+
+  Future<void> markArrived({
+    required String taskId,
+    required String runnerId,
+    String? progressNote,
+  }) async {
+    await _tasks.doc(taskId).update({
+      'status': 'arrived',
+      'arrivedAt': FieldValue.serverTimestamp(),
+      if (_hasText(progressNote)) 'progressNote': progressNote!.trim(),
+      'progressUpdatedAt': FieldValue.serverTimestamp(),
+    });
+    if (_hasText(progressNote)) {
+      await sendTaskMessage(
+        taskId: taskId,
+        senderId: runnerId,
+        senderRole: 'runner',
+        text: progressNote!.trim(),
+      );
+    }
+  }
+
+  Future<void> updateProgress({
+    required String taskId,
+    required String senderId,
+    required String senderRole,
+    required String progressNote,
+  }) async {
+    await _tasks.doc(taskId).update({
+      'progressNote': progressNote.trim(),
+      'progressUpdatedAt': FieldValue.serverTimestamp(),
+    });
+    await sendTaskMessage(
+      taskId: taskId,
+      senderId: senderId,
+      senderRole: senderRole,
+      text: progressNote.trim(),
+    );
+  }
+
+  Future<void> notifyWaitingForCustomer({
+    required String taskId,
+    required String runnerId,
+    String? progressNote,
+  }) async {
+    await _tasks.doc(taskId).update({
+      'status': 'waiting_for_customer',
+      'readyForHandoffAt': FieldValue.serverTimestamp(),
+      if (_hasText(progressNote)) 'progressNote': progressNote!.trim(),
+      'progressUpdatedAt': FieldValue.serverTimestamp(),
+    });
+    if (_hasText(progressNote)) {
+      await sendTaskMessage(
+        taskId: taskId,
+        senderId: runnerId,
+        senderRole: 'runner',
+        text: progressNote!.trim(),
+      );
+    }
+  }
+
+  Future<void> completeTaskByHandoffCode({
+    required FirestoreTask task,
+    required String handoffCodeInput,
+  }) async {
+    final taskCode = _normalizeCode(task.handoffCode ?? '');
+    final inputCode = _normalizeCode(handoffCodeInput);
+    if (taskCode.isEmpty || inputCode.isEmpty || taskCode != inputCode) {
+      throw StateError('code_mismatch');
+    }
+    await _tasks.doc(task.id).update({
+      'status': 'completed',
+      'completedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Stream<List<TaskMessage>> streamTaskMessages(String taskId) {
+    return _messages(taskId).snapshots().map((snapshot) {
+      final items = snapshot.docs.map(TaskMessage.fromDoc).toList(growable: false);
+      return _sortMessagesByCreatedAtAsc(items);
+    });
+  }
+
+  Future<void> sendTaskMessage({
+    required String taskId,
+    required String senderId,
+    required String senderRole,
+    required String text,
+  }) async {
+    if (!_hasText(text) || senderId.isEmpty) return;
+    await _messages(taskId).add({
+      'taskId': taskId,
+      'senderId': senderId,
+      'senderRole': senderRole,
+      'text': text.trim(),
+      'createdAt': FieldValue.serverTimestamp(),
+    });
   }
 
   List<FirestoreTask> _sortTasksByCreatedAtDesc(List<FirestoreTask> tasks) {
@@ -219,4 +330,28 @@ class FirestoreTaskService {
     if (b == null) return -1;
     return b.compareTo(a);
   }
+
+  List<TaskMessage> _sortMessagesByCreatedAtAsc(List<TaskMessage> messages) {
+    final sorted = List<TaskMessage>.from(messages);
+    sorted.sort((a, b) {
+      final ta = a.createdAt;
+      final tb = b.createdAt;
+      if (ta == null && tb == null) return 0;
+      if (ta == null) return -1;
+      if (tb == null) return 1;
+      return ta.compareTo(tb);
+    });
+    return sorted;
+  }
+
+  bool _hasText(String? text) => text != null && text.trim().isNotEmpty;
+
+  String _generateHandoffCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final rng = Random();
+    return List.generate(6, (_) => chars[rng.nextInt(chars.length)]).join();
+  }
+
+  String _normalizeCode(String code) =>
+      code.replaceAll(RegExp(r'[\s-]'), '').toUpperCase();
 }
