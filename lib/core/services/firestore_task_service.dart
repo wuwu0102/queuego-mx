@@ -35,6 +35,7 @@ class FirestoreTaskService {
       'status': 'open',
       'createdAt': FieldValue.serverTimestamp(),
       'ownerId': ownerId,
+      'accepterId': null,
     });
   }
 
@@ -58,6 +59,9 @@ class FirestoreTaskService {
     required String taskId,
     required String runnerId,
   }) async {
-    await _tasks.doc(taskId).update({'status': 'accepted', 'acceptedBy': runnerId});
+    await _tasks.doc(taskId).update({
+      'status': 'accepted',
+      'accepterId': runnerId,
+    });
   }
 }

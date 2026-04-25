@@ -285,7 +285,8 @@ class _TaskCard extends StatelessWidget {
           '工時: ${task.workHours} + 等待: ${task.waitHours} = ${task.totalHours}\n'
           '價格: ${task.price} MXN\n'
           '狀態: ${task.status}\n'
-          'ownerId: ${task.ownerId}',
+          'ownerId: ${task.ownerId}\n'
+          'accepterId: ${task.accepterId ?? "-"}',
         ),
         isThreeLine: true,
       ),
