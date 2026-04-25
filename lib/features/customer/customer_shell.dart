@@ -7,6 +7,7 @@ import '../../core/i18n/app_strings.dart';
 import '../../core/models/firestore_task.dart';
 import '../../core/models/task_application.dart';
 import '../../core/models/task_message.dart';
+import '../../core/models/user_metrics.dart';
 import '../../core/services/firestore_task_service.dart';
 
 class CustomerShell extends StatefulWidget {
@@ -372,6 +373,8 @@ class _TaskCard extends StatelessWidget {
             Text('${s.t('startDate')}: ${task.startDate} ${task.startTime}'),
             Text('${s.t('totalPrice')}: ${task.price} MXN'),
             Text('${s.t('status')}: ${s.statusLabel(task.status)}'),
+            if ((task.accepterId ?? '').isNotEmpty)
+              _TrustScorePanel(userId: task.accepterId!),
             if ((task.progressImageUrl ?? '').isNotEmpty)
               _ProgressPhotoLink(url: task.progressImageUrl!, label: s.t('progressPhotoProof')),
             if (task.status == 'arrived') ...[
@@ -444,9 +447,12 @@ class _TaskCard extends StatelessWidget {
               ),
               if (task.completedAt != null)
                 Text('${s.t('completedAt')}: ${DateFormat('yyyy-MM-dd HH:mm').format(task.completedAt!)}'),
-              TextButton(
-                onPressed: () {},
-                child: Text(s.t('rateRunner')),
+              _SubmitRatingButton(
+                task: task,
+                fromUserId: ownerId,
+                toUserId: task.accepterId ?? '',
+                role: 'customer',
+                ctaLabel: s.t('rateRunner'),
               ),
             ],
             if (task.status == 'cancelled' && task.cancelledAt != null)
@@ -595,6 +601,7 @@ class CustomerTaskApplicationsPage extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(app.runnerName, style: Theme.of(context).textTheme.titleMedium),
+                          _TrustScorePanel(userId: app.runnerId),
                           const SizedBox(height: 8),
                           Text(
                             app.proposedPriceMxn == null
@@ -676,6 +683,204 @@ class _HandoffCodeCard extends StatelessWidget {
 
 bool _showHandoffCode(String status) =>
     status == 'accepted' || status == 'arrived' || status == 'waiting_for_customer';
+
+
+class _TrustScorePanel extends StatelessWidget {
+  const _TrustScorePanel({required this.userId});
+
+  final String userId;
+
+  @override
+  Widget build(BuildContext context) {
+    if (userId.isEmpty) return const SizedBox.shrink();
+    final s = AppStrings.of(context);
+    return StreamBuilder<UserMetrics>(
+      stream: FirestoreTaskService.instance.streamUserMetrics(userId),
+      builder: (context, snapshot) {
+        final metrics = snapshot.data ??
+            UserMetrics(
+              uid: userId,
+              ratingAvg: 0,
+              ratingCount: 0,
+              completedCount: 0,
+              cancelledCount: 0,
+              trustScore: 0,
+            );
+        final trustText = s
+            .t('trustScoreLabel')
+            .replaceAll('{score}', metrics.trustScore.toStringAsFixed(0));
+        final ratingText = s
+            .t('ratingSummary')
+            .replaceAll('{avg}', metrics.ratingAvg.toStringAsFixed(1))
+            .replaceAll('{count}', '${metrics.ratingCount}');
+        final highTrust = metrics.trustScore >= 70;
+        return Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(trustText),
+              Text(ratingText),
+              Text(
+                highTrust ? s.t('trustedUserHint') : s.t('lowTrustHint'),
+                style: TextStyle(
+                  color: highTrust
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.error,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SubmitRatingButton extends StatelessWidget {
+  const _SubmitRatingButton({
+    required this.task,
+    required this.fromUserId,
+    required this.toUserId,
+    required this.role,
+    required this.ctaLabel,
+  });
+
+  final FirestoreTask task;
+  final String fromUserId;
+  final String toUserId;
+  final String role;
+  final String ctaLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    if (fromUserId.isEmpty || toUserId.isEmpty) return const SizedBox.shrink();
+    final s = AppStrings.of(context);
+    return StreamBuilder<bool>(
+      stream: FirestoreTaskService.instance.streamHasRated(
+        taskId: task.id,
+        fromUserId: fromUserId,
+      ),
+      builder: (context, snapshot) {
+        final rated = snapshot.data ?? false;
+        if (rated) {
+          return Text(s.t('alreadyRated'));
+        }
+        return TextButton(
+          onPressed: () => showDialog<void>(
+            context: context,
+            builder: (_) => _RatingDialog(
+              taskId: task.id,
+              fromUserId: fromUserId,
+              toUserId: toUserId,
+              role: role,
+            ),
+          ),
+          child: Text(ctaLabel),
+        );
+      },
+    );
+  }
+}
+
+class _RatingDialog extends StatefulWidget {
+  const _RatingDialog({
+    required this.taskId,
+    required this.fromUserId,
+    required this.toUserId,
+    required this.role,
+  });
+
+  final String taskId;
+  final String fromUserId;
+  final String toUserId;
+  final String role;
+
+  @override
+  State<_RatingDialog> createState() => _RatingDialogState();
+}
+
+class _RatingDialogState extends State<_RatingDialog> {
+  int _rating = 5;
+  final _commentController = TextEditingController();
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final s = AppStrings.of(context);
+    if (_rating < 1 || _rating > 5) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.t('ratingRequired'))),
+      );
+      return;
+    }
+    setState(() => _submitting = true);
+    try {
+      await FirestoreTaskService.instance.submitRating(
+        taskId: widget.taskId,
+        fromUserId: widget.fromUserId,
+        toUserId: widget.toUserId,
+        role: widget.role,
+        rating: _rating,
+        comment: _commentController.text.trim(),
+      );
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.t('reviewSubmitted'))),
+      );
+    } on StateError {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.t('alreadyRated'))),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
+    return AlertDialog(
+      title: Text(s.t('submitReview')),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DropdownButtonFormField<int>(
+            value: _rating,
+            items: [1, 2, 3, 4, 5]
+                .map((value) => DropdownMenuItem(value: value, child: Text('⭐ $value')))
+                .toList(growable: false),
+            onChanged: (value) => setState(() => _rating = value ?? 5),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _commentController,
+            minLines: 2,
+            maxLines: 4,
+            decoration: InputDecoration(labelText: s.t('ratingCommentHint')),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _submitting ? null : () => Navigator.pop(context),
+          child: Text(s.t('cancel')),
+        ),
+        FilledButton(
+          onPressed: _submitting ? null : _submit,
+          child: Text(s.t('submitReview')),
+        ),
+      ],
+    );
+  }
+}
 
 class _NumberField extends StatelessWidget {
   const _NumberField({

@@ -7,6 +7,7 @@ import '../../core/i18n/app_strings.dart';
 import '../../core/models/firestore_task.dart';
 import '../../core/models/task_application.dart';
 import '../../core/models/task_message.dart';
+import '../../core/models/user_metrics.dart';
 import '../../core/services/firestore_task_service.dart';
 
 class RunnerShell extends StatefulWidget {
@@ -515,6 +516,7 @@ class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
             Text('${s.t('totalPrice')}: ${task.price} MXN'),
             Text('${s.t('customerArrivalBufferHours')}: ${task.waitHours}'),
             Text('${s.t('status')}: ${s.statusLabel(task.status)}'),
+            _TrustScorePanel(userId: task.ownerId),
             if ((task.progressNote ?? '').isNotEmpty)
               Text('${s.t('latestProgress')}: ${task.progressNote}'),
             if ((task.progressImageUrl ?? '').isNotEmpty) ...[
@@ -618,9 +620,12 @@ class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
             if (task.status == 'completed')
               Padding(
                 padding: const EdgeInsets.only(top: 12),
-                child: TextButton(
-                  onPressed: () {},
-                  child: Text(s.t('rateCustomer')),
+                child: _SubmitRatingButton(
+                  task: task,
+                  fromUserId: widget.runnerId,
+                  toUserId: task.ownerId,
+                  role: 'runner',
+                  ctaLabel: s.t('rateCustomer'),
                 ),
               ),
           ],
@@ -692,6 +697,196 @@ class _ProgressPhotoLink extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+
+class _TrustScorePanel extends StatelessWidget {
+  const _TrustScorePanel({required this.userId});
+
+  final String userId;
+
+  @override
+  Widget build(BuildContext context) {
+    if (userId.isEmpty) return const SizedBox.shrink();
+    final s = AppStrings.of(context);
+    return StreamBuilder<UserMetrics>(
+      stream: FirestoreTaskService.instance.streamUserMetrics(userId),
+      builder: (context, snapshot) {
+        final metrics = snapshot.data ??
+            UserMetrics(
+              uid: userId,
+              ratingAvg: 0,
+              ratingCount: 0,
+              completedCount: 0,
+              cancelledCount: 0,
+              trustScore: 0,
+            );
+        final trustText = s
+            .t('trustScoreLabel')
+            .replaceAll('{score}', metrics.trustScore.toStringAsFixed(0));
+        final ratingText = s
+            .t('ratingSummary')
+            .replaceAll('{avg}', metrics.ratingAvg.toStringAsFixed(1))
+            .replaceAll('{count}', '${metrics.ratingCount}');
+        final highTrust = metrics.trustScore >= 70;
+        return Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(trustText),
+              Text(ratingText),
+              Text(
+                highTrust ? s.t('trustedUserHint') : s.t('lowTrustHint'),
+                style: TextStyle(
+                  color: highTrust
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.error,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SubmitRatingButton extends StatelessWidget {
+  const _SubmitRatingButton({
+    required this.task,
+    required this.fromUserId,
+    required this.toUserId,
+    required this.role,
+    required this.ctaLabel,
+  });
+
+  final FirestoreTask task;
+  final String fromUserId;
+  final String toUserId;
+  final String role;
+  final String ctaLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    if (fromUserId.isEmpty || toUserId.isEmpty) return const SizedBox.shrink();
+    final s = AppStrings.of(context);
+    return StreamBuilder<bool>(
+      stream: FirestoreTaskService.instance.streamHasRated(
+        taskId: task.id,
+        fromUserId: fromUserId,
+      ),
+      builder: (context, snapshot) {
+        final rated = snapshot.data ?? false;
+        if (rated) return Text(s.t('alreadyRated'));
+        return TextButton(
+          onPressed: () => showDialog<void>(
+            context: context,
+            builder: (_) => _RatingDialog(
+              taskId: task.id,
+              fromUserId: fromUserId,
+              toUserId: toUserId,
+              role: role,
+            ),
+          ),
+          child: Text(ctaLabel),
+        );
+      },
+    );
+  }
+}
+
+class _RatingDialog extends StatefulWidget {
+  const _RatingDialog({
+    required this.taskId,
+    required this.fromUserId,
+    required this.toUserId,
+    required this.role,
+  });
+
+  final String taskId;
+  final String fromUserId;
+  final String toUserId;
+  final String role;
+
+  @override
+  State<_RatingDialog> createState() => _RatingDialogState();
+}
+
+class _RatingDialogState extends State<_RatingDialog> {
+  int _rating = 5;
+  final _commentController = TextEditingController();
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final s = AppStrings.of(context);
+    setState(() => _submitting = true);
+    try {
+      await FirestoreTaskService.instance.submitRating(
+        taskId: widget.taskId,
+        fromUserId: widget.fromUserId,
+        toUserId: widget.toUserId,
+        role: widget.role,
+        rating: _rating,
+        comment: _commentController.text.trim(),
+      );
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.t('reviewSubmitted'))),
+      );
+    } on StateError {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.t('alreadyRated'))),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
+    return AlertDialog(
+      title: Text(s.t('submitReview')),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DropdownButtonFormField<int>(
+            value: _rating,
+            items: [1, 2, 3, 4, 5]
+                .map((value) => DropdownMenuItem(value: value, child: Text('⭐ $value')))
+                .toList(growable: false),
+            onChanged: (value) => setState(() => _rating = value ?? 5),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _commentController,
+            minLines: 2,
+            maxLines: 4,
+            decoration: InputDecoration(labelText: s.t('ratingCommentHint')),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _submitting ? null : () => Navigator.pop(context),
+          child: Text(s.t('cancel')),
+        ),
+        FilledButton(
+          onPressed: _submitting ? null : _submit,
+          child: Text(s.t('submitReview')),
+        ),
+      ],
     );
   }
 }

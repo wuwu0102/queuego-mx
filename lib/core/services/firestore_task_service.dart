@@ -1,9 +1,11 @@
 import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/firestore_task.dart';
 import '../models/task_application.dart';
 import '../models/task_message.dart';
+import '../models/user_metrics.dart';
 
 class FirestoreTaskService {
   FirestoreTaskService._();
@@ -15,6 +17,15 @@ class FirestoreTaskService {
 
   CollectionReference<Map<String, dynamic>> get _applications =>
       FirebaseFirestore.instance.collection('applications');
+
+  CollectionReference<Map<String, dynamic>> get _messages =>
+      FirebaseFirestore.instance.collection('taskMessages');
+
+  CollectionReference<Map<String, dynamic>> get _ratings =>
+      FirebaseFirestore.instance.collection('ratings');
+
+  CollectionReference<Map<String, dynamic>> get _users =>
+      FirebaseFirestore.instance.collection('users');
 
   static const List<String> _runnerActiveStatuses = [
     'accepted',
@@ -28,9 +39,6 @@ class FirestoreTaskService {
     'accepted',
   ];
 
-  CollectionReference<Map<String, dynamic>> _messages(String taskId) =>
-      _tasks.doc(taskId).collection('messages');
-
   Future<void> addTask({
     required String title,
     required String location,
@@ -43,6 +51,7 @@ class FirestoreTaskService {
     required String ownerId,
   }) async {
     final totalHours = workHours + waitHours;
+    await _ensureUserMetrics(ownerId);
     await _tasks.add({
       'title': title,
       'location': location,
@@ -155,6 +164,10 @@ class FirestoreTaskService {
     });
   }
 
+  Stream<UserMetrics> streamUserMetrics(String uid) {
+    return _users.doc(uid).snapshots().map((doc) => UserMetrics.fromDoc(uid, doc.data()));
+  }
+
   Future<void> applyForTask({
     required String taskId,
     required String runnerId,
@@ -162,6 +175,7 @@ class FirestoreTaskService {
     required double? proposedPriceMxn,
     required String message,
   }) async {
+    await _ensureUserMetrics(runnerId);
     final existed = await _applications.where('runnerId', isEqualTo: runnerId).get();
     final alreadyApplied = existed.docs.map(TaskApplication.fromDoc).any(
           (app) =>
@@ -189,6 +203,7 @@ class FirestoreTaskService {
     required FirestoreTask task,
     required TaskApplication application,
   }) async {
+    await _ensureUserMetrics(application.runnerId);
     await FirebaseFirestore.instance.runTransaction((transaction) async {
       final taskRef = _tasks.doc(task.id);
       final appRef = _applications.doc(application.id);
@@ -217,10 +232,24 @@ class FirestoreTaskService {
   }
 
   Future<void> cancelTask(String taskId) async {
-    await _tasks.doc(taskId).update({
-      'status': 'cancelled',
-      'cancelledAt': FieldValue.serverTimestamp(),
+    final ref = _tasks.doc(taskId);
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      final snapshot = await transaction.get(ref);
+      final task = FirestoreTask.fromDoc(snapshot);
+      if (!(task.status == 'open' || task.status == 'negotiating')) {
+        throw StateError('cancel_forbidden');
+      }
+      transaction.update(ref, {
+        'status': 'cancelled',
+        'cancelledAt': FieldValue.serverTimestamp(),
+      });
     });
+
+    final taskDoc = await ref.get();
+    final task = FirestoreTask.fromDoc(taskDoc);
+    if (task.ownerId.isNotEmpty) {
+      await _incrementCounter(task.ownerId, cancelledDelta: 1);
+    }
   }
 
   Future<void> markArrived({
@@ -308,6 +337,13 @@ class FirestoreTaskService {
       'status': 'completed',
       'completedAt': FieldValue.serverTimestamp(),
     });
+
+    if (task.ownerId.isNotEmpty) {
+      await _incrementCounter(task.ownerId, completedDelta: 1);
+    }
+    if ((task.accepterId ?? '').isNotEmpty) {
+      await _incrementCounter(task.accepterId!, completedDelta: 1);
+    }
   }
 
   Future<String> generateHandoffCodeForTask(String taskId) async {
@@ -317,7 +353,7 @@ class FirestoreTaskService {
   }
 
   Stream<List<TaskMessage>> streamTaskMessages(String taskId) {
-    return _messages(taskId).snapshots().map((snapshot) {
+    return _messages.where('taskId', isEqualTo: taskId).snapshots().map((snapshot) {
       final items = snapshot.docs.map(TaskMessage.fromDoc).toList(growable: false);
       return _sortMessagesByCreatedAtAsc(items);
     });
@@ -330,7 +366,7 @@ class FirestoreTaskService {
     required String text,
   }) async {
     if (!_hasText(text) || senderId.isEmpty) return;
-    await _messages(taskId).add({
+    await _messages.add({
       'taskId': taskId,
       'senderId': senderId,
       'senderRole': senderRole,
@@ -338,6 +374,133 @@ class FirestoreTaskService {
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
+
+  Stream<bool> streamHasRated({
+    required String taskId,
+    required String fromUserId,
+  }) {
+    final ratingId = _ratingDocId(taskId: taskId, fromUserId: fromUserId);
+    return _ratings.doc(ratingId).snapshots().map((doc) => doc.exists);
+  }
+
+  Future<void> submitRating({
+    required String taskId,
+    required String fromUserId,
+    required String toUserId,
+    required String role,
+    required int rating,
+    String? comment,
+  }) async {
+    if (rating < 1 || rating > 5) throw StateError('invalid_rating');
+    if (fromUserId.isEmpty || toUserId.isEmpty) throw StateError('invalid_user');
+
+    await _ensureUserMetrics(fromUserId);
+    await _ensureUserMetrics(toUserId);
+
+    final ratingId = _ratingDocId(taskId: taskId, fromUserId: fromUserId);
+    final taskRef = _tasks.doc(taskId);
+    final ratingRef = _ratings.doc(ratingId);
+    final userRef = _users.doc(toUserId);
+
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      final taskSnap = await transaction.get(taskRef);
+      final task = FirestoreTask.fromDoc(taskSnap);
+      if (task.status != 'completed') {
+        throw StateError('task_not_completed');
+      }
+
+      final existed = await transaction.get(ratingRef);
+      if (existed.exists) {
+        throw StateError('already_rated');
+      }
+
+      final userSnap = await transaction.get(userRef);
+      final userData = userSnap.data() ?? <String, dynamic>{};
+      final ratingCount = (userData['ratingCount'] as num?)?.toInt() ?? 0;
+      final ratingAvg = (userData['ratingAvg'] as num?)?.toDouble() ?? 0;
+      final nextCount = ratingCount + 1;
+      final nextAvg = ((ratingAvg * ratingCount) + rating) / nextCount;
+      final completedCount = (userData['completedCount'] as num?)?.toInt() ?? 0;
+      final cancelledCount = (userData['cancelledCount'] as num?)?.toInt() ?? 0;
+      final trustScore = _calcTrustScore(
+        ratingAvg: nextAvg,
+        completedCount: completedCount,
+        cancelledCount: cancelledCount,
+      );
+
+      transaction.set(ratingRef, {
+        'taskId': taskId,
+        'fromUserId': fromUserId,
+        'toUserId': toUserId,
+        'role': role,
+        'rating': rating,
+        'comment': comment?.trim(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      transaction.set(userRef, {
+        'ratingAvg': nextAvg,
+        'ratingCount': nextCount,
+        'completedCount': completedCount,
+        'cancelledCount': cancelledCount,
+        'trustScore': trustScore,
+      }, SetOptions(merge: true));
+    });
+  }
+
+  Future<void> _ensureUserMetrics(String uid) async {
+    if (uid.isEmpty) return;
+    await _users.doc(uid).set({
+      'ratingAvg': 0.0,
+      'ratingCount': 0,
+      'completedCount': 0,
+      'cancelledCount': 0,
+      'trustScore': 0.0,
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> _incrementCounter(
+    String uid, {
+    int completedDelta = 0,
+    int cancelledDelta = 0,
+  }) async {
+    if (uid.isEmpty) return;
+    final ref = _users.doc(uid);
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      final snap = await transaction.get(ref);
+      final data = snap.data() ?? <String, dynamic>{};
+      final ratingAvg = (data['ratingAvg'] as num?)?.toDouble() ?? 0;
+      final ratingCount = (data['ratingCount'] as num?)?.toInt() ?? 0;
+      final completed = (data['completedCount'] as num?)?.toInt() ?? 0;
+      final cancelled = (data['cancelledCount'] as num?)?.toInt() ?? 0;
+      final nextCompleted = max(0, completed + completedDelta);
+      final nextCancelled = max(0, cancelled + cancelledDelta);
+      final trust = _calcTrustScore(
+        ratingAvg: ratingAvg,
+        completedCount: nextCompleted,
+        cancelledCount: nextCancelled,
+      );
+      transaction.set(ref, {
+        'ratingAvg': ratingAvg,
+        'ratingCount': ratingCount,
+        'completedCount': nextCompleted,
+        'cancelledCount': nextCancelled,
+        'trustScore': trust,
+      }, SetOptions(merge: true));
+    });
+  }
+
+  double _calcTrustScore({
+    required double ratingAvg,
+    required int completedCount,
+    required int cancelledCount,
+  }) {
+    final score = (ratingAvg * 20) + (completedCount * 2) - (cancelledCount * 5);
+    return score.clamp(0, 100).toDouble();
+  }
+
+  String _ratingDocId({required String taskId, required String fromUserId}) =>
+      '${taskId}_$fromUserId';
 
   List<FirestoreTask> _sortTasksByCreatedAtDesc(List<FirestoreTask> tasks) {
     final sorted = List<FirestoreTask>.from(tasks);
