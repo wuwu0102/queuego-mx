@@ -1,19 +1,19 @@
-import '../constants/app_enums.dart';
 import '../models/user_profile.dart';
 
 class AuthService {
-  Future<UserProfile> loginWithEmail({required String email, required UserRole role}) async {
+  Future<UserProfile> loginWithEmail({required String email, required String role}) async {
     await Future<void>.delayed(const Duration(milliseconds: 300));
     return UserProfile(
-      uid: 'mock_${role.name}',
+      uid: 'mock_$role',
       role: role,
-      displayName: role == UserRole.customer ? 'Demo Customer' : 'Demo Runner',
+      displayName: role == 'customer' ? 'Demo Customer' : 'Demo Runner',
       email: email,
-      language: 'en',
       createdAt: DateTime.now(),
-      isVerified: role == UserRole.runner,
-      rating: role == UserRole.runner ? 4.8 : 0,
-      completedTasks: role == UserRole.runner ? 42 : 0,
+      ratingAvg: role == 'runner' ? 4.8 : 5,
+      ratingCount: role == 'runner' ? 12 : 0,
+      completedCount: role == 'runner' ? 42 : 0,
+      cancelledCount: 0,
+      trustScore: role == 'runner' ? 96 : 80,
     );
   }
 }

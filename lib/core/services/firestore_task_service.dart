@@ -66,6 +66,7 @@ class FirestoreTaskService {
       'createdAt': FieldValue.serverTimestamp(),
       'ownerId': ownerId,
       'ownerEmail': ownerEmail,
+      'ownerRole': 'customer',
       'runnerId': null,
       'runnerEmail': null,
       'accepterId': null,
@@ -87,8 +88,11 @@ class FirestoreTaskService {
   }
 
   Stream<List<FirestoreTask>> streamOpenTasks() {
-    return _tasks.where('status', isEqualTo: 'open').snapshots().map((snapshot) {
-      final tasks = snapshot.docs.map(FirestoreTask.fromDoc).toList(growable: false);
+    return _tasks.snapshots().map((snapshot) {
+      final tasks = snapshot.docs
+          .map(FirestoreTask.fromDoc)
+          .where((task) => task.status != 'cancelled' && task.status != 'completed')
+          .toList(growable: false);
       return _sortTasksByCreatedAtDesc(tasks);
     });
   }
@@ -172,6 +176,15 @@ class FirestoreTaskService {
     });
   }
 
+
+  Stream<List<UserMetrics>> streamAllUsersMetrics() {
+    return _users.snapshots().map((snapshot) {
+      return snapshot.docs
+          .map((doc) => UserMetrics.fromDoc(doc.id, doc.data()))
+          .toList(growable: false);
+    });
+  }
+
   Stream<UserMetrics> streamUserMetrics(String uid) {
     return _users.doc(uid).snapshots().map((doc) => UserMetrics.fromDoc(uid, doc.data()));
   }
@@ -203,7 +216,9 @@ class FirestoreTaskService {
       'runnerName': runnerName,
       'runnerEmail': runnerEmail,
       'proposedPriceMxn': proposedPriceMxn,
+      'runnerOffer': proposedPriceMxn,
       'message': message,
+      'runnerMessage': message,
       'status': 'pending',
       'createdAt': FieldValue.serverTimestamp(),
     });
@@ -234,6 +249,7 @@ class FirestoreTaskService {
         'runnerId': application.runnerId,
         'runnerEmail': application.runnerEmail,
         'accepterId': application.runnerId,
+        'acceptedAt': FieldValue.serverTimestamp(),
         'price': application.proposedPriceMxn ?? task.price,
       });
     });
@@ -248,7 +264,7 @@ class FirestoreTaskService {
     await FirebaseFirestore.instance.runTransaction((transaction) async {
       final snapshot = await transaction.get(ref);
       final task = FirestoreTask.fromDoc(snapshot);
-      if (task.status != 'open') {
+      if (task.status != 'open' && task.status != 'negotiating') {
         throw StateError('cancel_forbidden');
       }
       transaction.update(ref, {
@@ -442,11 +458,15 @@ class FirestoreTaskService {
         cancelledCount: cancelledCount,
       );
 
+      final fromRole = role == 'customer' ? 'customer' : 'runner';
+      final toRole = role == 'customer' ? 'runner' : 'customer';
+
       transaction.set(ratingRef, {
         'taskId': taskId,
         'fromUserId': fromUserId,
         'toUserId': toUserId,
-        'role': role,
+        'fromRole': fromRole,
+        'toRole': toRole,
         'rating': rating,
         'comment': comment?.trim(),
         'createdAt': FieldValue.serverTimestamp(),
@@ -473,11 +493,11 @@ class FirestoreTaskService {
   Future<void> _ensureUserMetrics(String uid) async {
     if (uid.isEmpty) return;
     await _users.doc(uid).set({
-      'ratingAvg': 0.0,
+      'ratingAvg': 5.0,
       'ratingCount': 0,
       'completedCount': 0,
       'cancelledCount': 0,
-      'trustScore': 0.0,
+      'trustScore': 80.0,
     }, SetOptions(merge: true));
   }
 
@@ -526,7 +546,14 @@ class FirestoreTaskService {
 
   List<FirestoreTask> _sortTasksByCreatedAtDesc(List<FirestoreTask> tasks) {
     final sorted = List<FirestoreTask>.from(tasks);
-    sorted.sort((a, b) => _compareDateDesc(a.createdAt, b.createdAt));
+    sorted.sort((a, b) {
+      final openA = a.status == 'open' ? 1 : 0;
+      final openB = b.status == 'open' ? 1 : 0;
+      if (openA != openB) return openB.compareTo(openA);
+      final created = _compareDateDesc(a.createdAt, b.createdAt);
+      if (created != 0) return created;
+      return (b.price).compareTo(a.price);
+    });
     return sorted;
   }
 
@@ -561,8 +588,8 @@ class FirestoreTaskService {
   bool _hasText(String? text) => text != null && text.trim().isNotEmpty;
 
   String _generateHandoffCode() {
-    final value = Random().nextInt(900000) + 100000;
-    return '$value';
+    final value = Random().nextInt(9000) + 1000;
+    return 'QG-$value';
   }
 
   String _normalizeCode(String code) =>

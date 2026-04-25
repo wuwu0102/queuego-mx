@@ -1,13 +1,15 @@
-import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 
-import '../../core/services/auth_gate.dart';
 import '../../core/i18n/app_strings.dart';
+import '../../core/models/user_profile.dart';
+import '../../core/services/auth_gate.dart';
+import '../../core/services/user_profile_service.dart';
 import '../admin/admin_dashboard_screen.dart';
 import '../customer/customer_shell.dart';
 import '../runner/runner_shell.dart';
-import 'auth_screen.dart';
 import '../shared/terms_screen.dart';
+import 'auth_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key, required this.onLocaleChanged});
@@ -19,6 +21,8 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
+  String? _rolePromptedUid;
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
@@ -26,8 +30,44 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       initialData: FirebaseAuth.instance.currentUser,
       builder: (context, snapshot) {
         final currentUser = snapshot.data ?? FirebaseAuth.instance.currentUser;
+        _ensureUserProfileFlow(currentUser);
         return _buildScaffold(context, currentUser);
       },
+    );
+  }
+
+  Future<void> _ensureUserProfileFlow(User? user) async {
+    if (user == null || user.isAnonymous) return;
+    final created = await UserProfileService.instance.ensureProfile(user);
+    if (!mounted || _rolePromptedUid == user.uid) return;
+    if (!created) {
+      _rolePromptedUid = user.uid;
+      return;
+    }
+    _rolePromptedUid = user.uid;
+    final role = await _showRoleDialog(context);
+    if (role == null) return;
+    await UserProfileService.instance.updateRole(uid: user.uid, role: role);
+  }
+
+  Future<String?> _showRoleDialog(BuildContext context) {
+    final languageCode = Localizations.localeOf(context).languageCode;
+    final title = switch (languageCode) {
+      'en' => 'What do you want to do in QueueGo?',
+      'zh' when isAdminUser(FirebaseAuth.instance.currentUser) => '你想在 QueueGo 做什麼？',
+      _ => '¿Qué quieres hacer en QueueGo?',
+    };
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: Text(title),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, 'customer'), child: const Text('Publicar tareas / 發任務 / Post tasks')),
+          TextButton(onPressed: () => Navigator.pop(context, 'runner'), child: const Text('Tomar tareas / 接任務 / Take tasks')),
+          FilledButton(onPressed: () => Navigator.pop(context, 'both'), child: const Text('Ambas / 兩者都要 / Both')),
+        ],
+      ),
     );
   }
 
@@ -51,6 +91,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               ),
             ),
+            _RoleSettingsButton(user: currentUser),
             if (showAdmin)
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 4, vertical: 12),
@@ -151,6 +192,45 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ],
       ),
     );
+  }
+}
+
+class _RoleSettingsButton extends StatelessWidget {
+  const _RoleSettingsButton({required this.user});
+
+  final User? user;
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = user?.uid ?? '';
+    if (uid.isEmpty) return const SizedBox.shrink();
+    return StreamBuilder<UserProfile?>(
+      stream: UserProfileService.instance.streamProfile(uid),
+      builder: (context, snapshot) {
+        final role = snapshot.data?.role ?? 'both';
+        return TextButton(
+          onPressed: () => _showRolePicker(context, uid),
+          child: Text('Role: $role'),
+        );
+      },
+    );
+  }
+
+  Future<void> _showRolePicker(BuildContext context, String uid) async {
+    final role = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Switch role'),
+        content: const Text('Choose your active role in QueueGo.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, 'customer'), child: const Text('customer')),
+          TextButton(onPressed: () => Navigator.pop(context, 'runner'), child: const Text('runner')),
+          FilledButton(onPressed: () => Navigator.pop(context, 'both'), child: const Text('both')),
+        ],
+      ),
+    );
+    if (role == null) return;
+    await UserProfileService.instance.updateRole(uid: uid, role: role);
   }
 }
 

@@ -16,9 +16,11 @@ class FirestoreTask {
     required this.createdAt,
     required this.ownerId,
     required this.ownerEmail,
+    required this.ownerRole,
     required this.runnerId,
     required this.runnerEmail,
     required this.accepterId,
+    required this.acceptedAt,
     required this.arrivedAt,
     required this.progressNote,
     required this.progressImageUrl,
@@ -49,9 +51,11 @@ class FirestoreTask {
   final DateTime? createdAt;
   final String ownerId;
   final String? ownerEmail;
+  final String ownerRole;
   final String? runnerId;
   final String? runnerEmail;
   final String? accepterId;
+  final DateTime? acceptedAt;
   final DateTime? arrivedAt;
   final String? progressNote;
   final String? progressImageUrl;
@@ -84,9 +88,11 @@ class FirestoreTask {
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       ownerId: (data['ownerId'] ?? '') as String,
       ownerEmail: data['ownerEmail'] as String?,
+      ownerRole: (data['ownerRole'] ?? 'customer') as String,
       runnerId: data['runnerId'] as String?,
       runnerEmail: data['runnerEmail'] as String?,
       accepterId: data['accepterId'] as String?,
+      acceptedAt: (data['acceptedAt'] as Timestamp?)?.toDate(),
       arrivedAt: (data['arrivedAt'] as Timestamp?)?.toDate(),
       progressNote: data['progressNote'] as String?,
       progressImageUrl: data['progressImageUrl'] as String?,
