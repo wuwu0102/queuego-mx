@@ -1,19 +1,94 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/i18n/app_strings.dart';
 import '../../core/models/firestore_task.dart';
 import '../../core/models/user_metrics.dart';
+import '../../core/services/auth_gate.dart';
 import '../../core/services/firestore_task_service.dart';
 
-class AdminDashboardScreen extends StatelessWidget {
+class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key, required this.onLocaleChanged});
 
   final ValueChanged<Locale> onLocaleChanged;
 
   @override
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  bool _isSeeding = false;
+  bool _isDeleting = false;
+
+  Future<void> _seedDemoTasks(BuildContext context) async {
+    if (_isSeeding) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (!isAdminUser(user)) return;
+    final ownerId = user?.uid ?? '';
+    final ownerEmail = user?.email?.trim() ?? '';
+    if (ownerId.isEmpty || ownerEmail.isEmpty) return;
+
+    final s = AppStrings.of(context);
+    final demoCount = await FirestoreTaskService.instance.countDemoTasks();
+    if (!context.mounted) return;
+    if (demoCount > 0) {
+      final createMore = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          content: Text(s.t('demoTasksExistConfirm')),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(s.t('cancel')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      if (createMore != true || !context.mounted) return;
+    }
+
+    setState(() => _isSeeding = true);
+    try {
+      final created = await FirestoreTaskService.instance.seedDemoTasks(
+        ownerId: ownerId,
+        ownerEmail: ownerEmail,
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.t('demoTasksCreated').replaceAll('{count}', '$created'))),
+      );
+    } finally {
+      if (mounted) setState(() => _isSeeding = false);
+    }
+  }
+
+  Future<void> _deleteDemoTasks(BuildContext context) async {
+    if (_isDeleting) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (!isAdminUser(user)) return;
+    final s = AppStrings.of(context);
+    setState(() => _isDeleting = true);
+    try {
+      final deleted = await FirestoreTaskService.instance.deleteDemoTasks();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.t('demoTasksDeleted').replaceAll('{count}', '$deleted'))),
+      );
+    } finally {
+      if (mounted) setState(() => _isDeleting = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
+    final user = FirebaseAuth.instance.currentUser;
+    final showDemoControls = isAdminUser(user);
     return Scaffold(
       appBar: AppBar(title: const Text('Admin Console')),
       body: StreamBuilder<List<FirestoreTask>>(
@@ -48,18 +123,49 @@ class AdminDashboardScreen extends StatelessWidget {
                 children: [
                   ActionChip(
                     label: const Text('Español MX'),
-                    onPressed: () => onLocaleChanged(const Locale('es', 'MX')),
+                    onPressed: () => widget.onLocaleChanged(const Locale('es', 'MX')),
                   ),
                   ActionChip(
                     label: const Text('English'),
-                    onPressed: () => onLocaleChanged(const Locale('en')),
+                    onPressed: () => widget.onLocaleChanged(const Locale('en')),
                   ),
                   ActionChip(
                     label: const Text('繁中'),
-                    onPressed: () => onLocaleChanged(const Locale('zh', 'TW')),
+                    onPressed: () => widget.onLocaleChanged(const Locale('zh', 'TW')),
                   ),
                 ],
               ),
+              if (showDemoControls) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: _isSeeding ? null : () => _seedDemoTasks(context),
+                      icon: _isSeeding
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.playlist_add),
+                      label: Text(s.t('createDemoTasks')),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _isDeleting ? null : () => _deleteDemoTasks(context),
+                      icon: _isDeleting
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.delete_sweep_outlined),
+                      label: Text(s.t('deleteDemoTasks')),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 8),
               Text('Tasks total: ${tasks.length}'),
               ...statusCounts.entries.map((e) => Text('${e.key}: ${e.value}')),
