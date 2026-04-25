@@ -1,4 +1,4 @@
-import 'dart:math';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
@@ -13,7 +13,7 @@ class MockTaskRepository extends ChangeNotifier {
 
   final List<MvpTask> _tasks = [];
   final List<ReviewItem> _reviews = [];
-  final Random _random = Random();
+  final math.Random _random = math.Random();
 
   List<MvpTask> get tasks => List.unmodifiable(_tasks);
   List<ReviewItem> get reviews => List.unmodifiable(_reviews);
