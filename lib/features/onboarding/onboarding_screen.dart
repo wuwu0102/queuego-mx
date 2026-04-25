@@ -129,6 +129,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 20),
+            _HomeActionCard(
+              icon: Icons.add_circle_outline,
+              title: s.t('customer'),
+              subtitle: s.t('customerSubtitle'),
+              onTap: () => _openPublishFlow(context),
+            ),
+            _HomeActionCard(
+              icon: Icons.handshake_outlined,
+              title: s.t('runner'),
+              subtitle: s.t('runnerSubtitle'),
+              onTap: () => _openRunnerFlow(context),
+            ),
           ],
         ),
       );
@@ -206,23 +219,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             icon: Icons.add_circle_outline,
             title: s.t('customer'),
             subtitle: s.t('customerSubtitle'),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const CustomerShell(),
-              ),
-            ),
+            onTap: () => _openPublishFlow(context),
           ),
           _HomeActionCard(
             icon: Icons.handshake_outlined,
             title: s.t('runner'),
             subtitle: s.t('runnerSubtitle'),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const RunnerShell(),
-              ),
-            ),
+            onTap: () => _openRunnerFlow(context),
           ),
           if (showAdmin)
             _HomeActionCard(
@@ -237,6 +240,32 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _openPublishFlow(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (!isFormallyLoggedIn(user)) {
+      final loggedIn = await showLoginModal(context);
+      if (!loggedIn) return;
+      final refreshedUser = FirebaseAuth.instance.currentUser;
+      if (!isFormallyLoggedIn(refreshedUser)) return;
+    }
+    if (!context.mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const CustomerShell(),
+      ),
+    );
+  }
+
+  Future<void> _openRunnerFlow(BuildContext context) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const RunnerShell(),
       ),
     );
   }
