@@ -7,7 +7,6 @@ class TaskApplication {
     required this.runnerId,
     required this.runnerName,
     required this.proposedPriceMxn,
-    required this.estimatedArrivalHours,
     required this.message,
     required this.status,
     required this.createdAt,
@@ -17,8 +16,7 @@ class TaskApplication {
   final String taskId;
   final String runnerId;
   final String runnerName;
-  final double proposedPriceMxn;
-  final double estimatedArrivalHours;
+  final double? proposedPriceMxn;
   final String message;
   final String status;
   final DateTime? createdAt;
@@ -30,16 +28,16 @@ class TaskApplication {
       taskId: (data['taskId'] ?? '') as String,
       runnerId: (data['runnerId'] ?? '') as String,
       runnerName: (data['runnerName'] ?? '') as String,
-      proposedPriceMxn: _toDouble(data['proposedPriceMxn']),
-      estimatedArrivalHours: _toDouble(data['estimatedArrivalHours']),
+      proposedPriceMxn: _toNullableDouble(data['proposedPriceMxn']),
       message: (data['message'] ?? '') as String,
       status: (data['status'] ?? 'pending') as String,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
     );
   }
 
-  static double _toDouble(dynamic value) {
+  static double? _toNullableDouble(dynamic value) {
+    if (value == null) return null;
     if (value is num) return value.toDouble();
-    return double.tryParse('$value') ?? 0;
+    return double.tryParse('$value');
   }
 }

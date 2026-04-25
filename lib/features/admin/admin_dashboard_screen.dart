@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/i18n/app_strings.dart';
 import '../../data/fake_data.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
@@ -7,11 +8,14 @@ class AdminDashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('Admin Console')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          Text('${s.t('currentMode')}: ${s.t('modeAdmin')}'),
+          const SizedBox(height: 8),
           Text('Tasks total: ${fakeTasks.length}'),
           const Text('Users total: 3 (mock)'),
           const Text('Disputes: 1 (mock)'),
