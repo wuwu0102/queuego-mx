@@ -391,12 +391,14 @@ class _RunnerActiveTaskCard extends StatefulWidget {
 
 class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
   final _progressController = TextEditingController();
+  final _progressImageUrlController = TextEditingController();
   final _handoffCodeController = TextEditingController();
   bool _loading = false;
 
   @override
   void dispose() {
     _progressController.dispose();
+    _progressImageUrlController.dispose();
     _handoffCodeController.dispose();
     super.dispose();
   }
@@ -409,8 +411,10 @@ class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
         taskId: widget.task.id,
         runnerId: widget.runnerId,
         progressNote: _progressController.text.trim(),
+        progressImageUrl: _progressImageUrlController.text.trim(),
       );
       _progressController.clear();
+      _progressImageUrlController.clear();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(s.t('arrivedSaved'))),
@@ -431,8 +435,10 @@ class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
         senderId: widget.runnerId,
         senderRole: 'runner',
         progressNote: note,
+        progressImageUrl: _progressImageUrlController.text.trim(),
       );
       _progressController.clear();
+      _progressImageUrlController.clear();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(s.t('progressSaved'))),
@@ -450,8 +456,10 @@ class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
         taskId: widget.task.id,
         runnerId: widget.runnerId,
         progressNote: _progressController.text.trim(),
+        progressImageUrl: _progressImageUrlController.text.trim(),
       );
       _progressController.clear();
+      _progressImageUrlController.clear();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(s.t('runnerNearlyThereSent'))),
@@ -509,6 +517,10 @@ class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
             Text('${s.t('status')}: ${s.statusLabel(task.status)}'),
             if ((task.progressNote ?? '').isNotEmpty)
               Text('${s.t('latestProgress')}: ${task.progressNote}'),
+            if ((task.progressImageUrl ?? '').isNotEmpty) ...[
+              const SizedBox(height: 6),
+              _ProgressPhotoLink(url: task.progressImageUrl!, label: s.t('progressPhotoProof')),
+            ],
             if (task.arrivedAt != null)
               Text('${s.t('arrivedAt')}: ${_formatTime(task.arrivedAt!)}'),
             if (task.readyForHandoffAt != null)
@@ -524,6 +536,14 @@ class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
                 decoration: InputDecoration(
                   labelText: s.t('updateProgress'),
                   hintText: s.t('progressHint'),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _progressImageUrlController,
+                decoration: InputDecoration(
+                  labelText: s.t('progressPhotoUrlLabel'),
+                  hintText: s.t('progressPhotoUrlHint'),
                 ),
               ),
               const SizedBox(height: 10),
@@ -636,6 +656,38 @@ class _TaskMessagesSection extends StatefulWidget {
 
   @override
   State<_TaskMessagesSection> createState() => _TaskMessagesSectionState();
+}
+
+class _ProgressPhotoLink extends StatelessWidget {
+  const _ProgressPhotoLink({required this.url, required this.label});
+
+  final String url;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        Clipboard.setData(ClipboardData(text: url));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(url)),
+        );
+      },
+      child: Row(
+        children: [
+          const Icon(Icons.image_outlined, size: 18),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '$label: $url',
+              style: TextStyle(color: Theme.of(context).colorScheme.primary),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _TaskMessagesSectionState extends State<_TaskMessagesSection> {

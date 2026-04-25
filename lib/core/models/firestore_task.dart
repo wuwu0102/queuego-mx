@@ -18,9 +18,11 @@ class FirestoreTask {
     required this.accepterId,
     required this.arrivedAt,
     required this.progressNote,
+    required this.progressImageUrl,
     required this.progressUpdatedAt,
     required this.readyForHandoffAt,
     required this.completedAt,
+    required this.cancelledAt,
     required this.whatsappNumber,
     required this.handoffCode,
   });
@@ -41,9 +43,11 @@ class FirestoreTask {
   final String? accepterId;
   final DateTime? arrivedAt;
   final String? progressNote;
+  final String? progressImageUrl;
   final DateTime? progressUpdatedAt;
   final DateTime? readyForHandoffAt;
   final DateTime? completedAt;
+  final DateTime? cancelledAt;
   final String? whatsappNumber;
   final String? handoffCode;
 
@@ -66,9 +70,11 @@ class FirestoreTask {
       accepterId: data['accepterId'] as String?,
       arrivedAt: (data['arrivedAt'] as Timestamp?)?.toDate(),
       progressNote: data['progressNote'] as String?,
+      progressImageUrl: data['progressImageUrl'] as String?,
       progressUpdatedAt: (data['progressUpdatedAt'] as Timestamp?)?.toDate(),
       readyForHandoffAt: (data['readyForHandoffAt'] as Timestamp?)?.toDate(),
       completedAt: (data['completedAt'] as Timestamp?)?.toDate(),
+      cancelledAt: (data['cancelledAt'] as Timestamp?)?.toDate(),
       whatsappNumber: data['whatsappNumber'] as String?,
       handoffCode: data['handoffCode'] as String?,
     );
