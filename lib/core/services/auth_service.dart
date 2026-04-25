@@ -14,6 +14,7 @@ class AuthService {
       completedCount: role == 'runner' ? 42 : 0,
       cancelledCount: 0,
       trustScore: role == 'runner' ? 96 : 80,
+      isAdmin: false,
     );
   }
 }

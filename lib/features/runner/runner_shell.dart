@@ -10,6 +10,7 @@ import '../../core/models/task_message.dart';
 import '../../core/models/user_metrics.dart';
 import '../../core/services/firestore_task_service.dart';
 import '../../core/services/auth_gate.dart';
+import '../../core/services/user_profile_service.dart';
 
 class RunnerShell extends StatefulWidget {
   const RunnerShell({super.key});
@@ -207,14 +208,16 @@ class _ApplyTaskDialogState extends State<ApplyTaskDialog> {
     setState(() => _submitting = true);
     try {
       final user = FirebaseAuth.instance.currentUser;
-      final shortId = widget.runnerId.length <= 6
-          ? widget.runnerId
-          : widget.runnerId.substring(0, 6);
+      final profile = await UserProfileService.instance.fetchProfile(widget.runnerId);
+      final email = user?.email?.trim() ?? '';
+      final emailPrefix = email.contains('@') ? email.split('@').first : '';
+      final fallbackName = emailPrefix.isNotEmpty ? emailPrefix : 'Runner';
+      final profileName = profile?.displayName.trim() ?? '';
       await FirestoreTaskService.instance.applyForTask(
         taskId: widget.task.id,
         runnerId: widget.runnerId,
-        runnerName: user?.displayName ?? 'Runner $shortId',
-        runnerEmail: user?.email ?? '',
+        runnerName: profileName.isNotEmpty ? profileName : fallbackName,
+        runnerEmail: email,
         proposedPriceMxn: _toNullableDouble(_offerController.text.trim()),
         message: _messageController.text.trim(),
       );

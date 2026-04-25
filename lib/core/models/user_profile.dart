@@ -12,6 +12,7 @@ class UserProfile {
     required this.completedCount,
     required this.cancelledCount,
     required this.trustScore,
+    required this.isAdmin,
   });
 
   final String uid;
@@ -24,6 +25,7 @@ class UserProfile {
   final int completedCount;
   final int cancelledCount;
   final double trustScore;
+  final bool isAdmin;
 
   bool get canPostTasks => role == 'customer' || role == 'both';
   bool get canTakeTasks => role == 'runner' || role == 'both';
@@ -41,6 +43,7 @@ class UserProfile {
       completedCount: (raw['completedCount'] as num?)?.toInt() ?? 0,
       cancelledCount: (raw['cancelledCount'] as num?)?.toInt() ?? 0,
       trustScore: (raw['trustScore'] as num?)?.toDouble() ?? 80,
+      isAdmin: raw['isAdmin'] == true,
     );
   }
 }

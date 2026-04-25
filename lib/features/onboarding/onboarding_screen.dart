@@ -22,6 +22,7 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
   String? _rolePromptedUid;
+  String? _adminWelcomedUid;
 
   @override
   Widget build(BuildContext context) {
@@ -37,17 +38,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _ensureUserProfileFlow(User? user) async {
-    if (user == null || user.isAnonymous) return;
+    if (!isFormallyLoggedIn(user)) return;
     final created = await UserProfileService.instance.ensureProfile(user);
-    if (!mounted || _rolePromptedUid == user.uid) return;
-    if (!created) {
-      _rolePromptedUid = user.uid;
+    final uid = user?.uid ?? '';
+    if (!mounted || uid.isEmpty) return;
+    if (isAdminUser(user) && _adminWelcomedUid != uid) {
+      _adminWelcomedUid = uid;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            '管理員登入成功 / Admin login successful / Administrador conectado',
+          ),
+        ),
+      );
+    }
+    if (!created || _rolePromptedUid == uid || isAdminUser(user)) {
+      _rolePromptedUid = uid;
       return;
     }
-    _rolePromptedUid = user.uid;
+    _rolePromptedUid = uid;
     final role = await _showRoleDialog(context);
     if (role == null) return;
-    await UserProfileService.instance.updateRole(uid: user.uid, role: role);
+    await UserProfileService.instance.updateRole(uid: uid, role: role);
   }
 
   Future<String?> _showRoleDialog(BuildContext context) {
@@ -76,45 +88,85 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final isLoggedIn = isFormallyLoggedIn(currentUser);
     final email = currentUser?.email ?? '';
     final showAdmin = isAdminUser(currentUser);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(s.t('appName')),
-        actions: [
-          if (isLoggedIn) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-              child: Center(
-                child: Text(
-                  email,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-            _RoleSettingsButton(user: currentUser),
-            if (showAdmin)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 12),
-                child: Chip(
-                  label: Text('Admin'),
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-            TextButton(
-              onPressed: () async {
-                await FirebaseAuth.instance.signOut();
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(s.t('logoutDone'))),
-                );
-              },
-              child: Text(s.t('logoutAction')),
-            ),
-          ] else
+    if (!isLoggedIn) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(s.t('appName')),
+          actions: [
             TextButton(
               onPressed: () => showLoginModal(context),
               child: Text(s.t('loginAction')),
             ),
+            TextButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const TermsScreen()),
+              ),
+              child: Text(s.t('terms')),
+            ),
+          ],
+        ),
+        body: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            Text(
+              s.t('sloganMvp'),
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 16),
+            Text(s.t('chooseLanguage')),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                ActionChip(
+                  label: const Text('Español MX'),
+                  onPressed: () => widget.onLocaleChanged(const Locale('es', 'MX')),
+                ),
+                ActionChip(
+                  label: const Text('English'),
+                  onPressed: () => widget.onLocaleChanged(const Locale('en')),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(s.t('appName')),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+            child: Center(
+              child: Text(
+                email,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+          _RoleSettingsButton(user: currentUser),
+          if (showAdmin)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+              child: Chip(
+                label: Text('Admin'),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          TextButton(
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(s.t('logoutDone'))),
+              );
+            },
+            child: Text(s.t('logoutAction')),
+          ),
           TextButton(
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen())),
             child: Text(s.t('terms')),
@@ -184,11 +236,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               ),
             ),
-          const SizedBox(height: 8),
-          Text(
-            s.t('firebaseMockNotice'),
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
         ],
       ),
     );
