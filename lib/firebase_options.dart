@@ -10,7 +10,7 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAj4J4goarjV9pzrDKbTK-zyEGtA2Np4JRQ',
+    apiKey: 'AIzaSyAi4J49arjV9pzrDKbTK-zyEGtA2Np4jRQ',
     authDomain: 'queuego-mx.firebaseapp.com',
     projectId: 'queuego-mx',
     storageBucket: 'queuego-mx.firebasestorage.app',
