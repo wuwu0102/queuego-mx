@@ -490,6 +490,27 @@ class FirestoreTaskService {
     return snapshot.docs.length;
   }
 
+  Future<void> deleteTaskById(String taskId) async {
+    if (taskId.trim().isEmpty) return;
+
+    final taskRef = _tasks.doc(taskId);
+
+    await _deleteByTaskId(_applications, taskId);
+    await _deleteByTaskId(_messages, taskId);
+    await _deleteByTaskId(_ratings, taskId);
+    await taskRef.delete();
+  }
+
+  Future<void> _deleteByTaskId(
+    CollectionReference<Map<String, dynamic>> collection,
+    String taskId,
+  ) async {
+    final snapshot = await collection.where('taskId', isEqualTo: taskId).get();
+    for (final doc in snapshot.docs) {
+      await doc.reference.delete();
+    }
+  }
+
   Future<int> convertOpenDemoTasksToHistory() async {
     final snapshot = await _tasks
         .where('isDemo', isEqualTo: true)
