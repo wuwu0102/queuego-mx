@@ -37,6 +37,7 @@ class FirestoreTaskService {
     'pending',
     'accepted',
   ];
+  static const double _minimumPriceMxn = 250;
 
   Future<void> addTask({
     required String title,
@@ -44,13 +45,24 @@ class FirestoreTaskService {
     required String note,
     required String startDate,
     required String startTime,
-    required double workHours,
+    required double basePrice,
+    required String urgencyLevel,
+    required double estimatedHours,
     required double waitHours,
     required double price,
     required String ownerId,
     String? ownerEmail,
   }) async {
-    final totalHours = workHours + waitHours;
+    final normalizedUrgency = _normalizeUrgencyLevel(urgencyLevel);
+    final computedPrice = computeFinalPrice(
+      basePrice: basePrice,
+      estimatedHours: estimatedHours,
+      waitHours: waitHours,
+      urgencyLevel: normalizedUrgency,
+    );
+    final safePrice = max(_minimumPriceMxn, price);
+    final finalPrice = max(computedPrice, safePrice);
+    final totalHours = estimatedHours + waitHours;
     await _ensureUserMetrics(ownerId);
     await _tasks.add({
       'title': title,
@@ -58,10 +70,13 @@ class FirestoreTaskService {
       'note': note,
       'startDate': startDate,
       'startTime': startTime,
-      'workHours': workHours,
+      'basePrice': basePrice,
+      'urgencyLevel': normalizedUrgency,
+      'estimatedHours': estimatedHours,
+      'workHours': estimatedHours,
       'waitHours': waitHours,
       'totalHours': totalHours,
-      'price': price,
+      'price': finalPrice,
       'status': 'open',
       'createdAt': FieldValue.serverTimestamp(),
       'ownerId': ownerId,
@@ -280,90 +295,98 @@ class FirestoreTaskService {
       {
         'title': 'SAT Guadalajara',
         'location': 'SAT Guadalajara Centro',
-        'note': 'Necesito apoyo para hacer fila para trámite fiscal. Pago 300 MXN.',
-        'instructions': 'Esperar en la fila principal y avisar cuando falten 15 lugares.',
+        'note': 'Fila para trámite fiscal presencial con validación de documentos.',
+        'instructions': 'Formarse desde la entrada principal y avisar cuando falten 15 turnos.',
         'startDate': _formatDate(now.subtract(const Duration(days: 2))),
-        'startTime': '08:30',
-        'workHours': 2.0,
+        'startTime': '11:07',
+        'basePrice': 200.0,
+        'estimatedHours': 2.0,
         'waitHours': 1.0,
-        'price': 300.0,
+        'urgencyLevel': 'priority',
       },
       {
         'title': 'IMSS Clínica',
         'location': 'IMSS Clínica 46 Guadalajara',
-        'note': 'Ayuda para esperar turno y avisar cuando falte poco. Pago 350 MXN.',
-        'instructions': 'Quédate en fila de citas y avisa cuando queden pocos turnos.',
+        'note': 'Gestión de fila para consulta externa y cambio de ventanilla.',
+        'instructions': 'Tomar lugar en admisión y reportar avance cada 20 minutos.',
         'startDate': _formatDate(now.subtract(const Duration(days: 1))),
-        'startTime': '09:00',
-        'workHours': 2.0,
+        'startTime': '15:19',
+        'basePrice': 240.0,
+        'estimatedHours': 2.0,
         'waitHours': 1.0,
-        'price': 350.0,
+        'urgencyLevel': 'priority',
       },
       {
         'title': 'Banco BBVA',
         'location': 'Sucursal BBVA Chapalita',
-        'note': 'Esperar turno para atención en sucursal. Pago 200 MXN.',
-        'instructions': 'Tomar lugar en ventanilla y compartir avance cada 20 minutos.',
+        'note': 'Asistencia para fila de caja y firma de documentación bancaria.',
+        'instructions': 'Mantener lugar en ventanilla y confirmar tiempo de atención estimado.',
         'startDate': _formatDate(now.subtract(const Duration(days: 4))),
-        'startTime': '10:00',
-        'workHours': 1.5,
+        'startTime': '09:34',
+        'basePrice': 120.0,
+        'estimatedHours': 1.0,
         'waitHours': 1.0,
-        'price': 200.0,
+        'urgencyLevel': 'normal',
       },
       {
         'title': 'Costco Guadalajara',
         'location': 'Costco López Mateos',
-        'note': 'Guardar lugar en fila para entrada. Pago 150 MXN.',
-        'instructions': 'Resguardar lugar en fila de acceso y avisar antes de entrar.',
+        'note': 'Reserva de turno en acceso principal durante hora pico.',
+        'instructions': 'Asegurar posición en la fila y avisar cuando falten 10 minutos para entrar.',
         'startDate': _formatDate(now.subtract(const Duration(days: 6))),
-        'startTime': '11:30',
-        'workHours': 1.0,
+        'startTime': '13:52',
+        'basePrice': 100.0,
+        'estimatedHours': 1.0,
         'waitHours': 1.0,
-        'price': 150.0,
+        'urgencyLevel': 'normal',
       },
       {
         'title': 'Concierto / Evento',
         'location': 'Auditorio Telmex',
-        'note': 'Guardar lugar en fila antes de entrar. Pago 250 MXN.',
-        'instructions': 'Mantener el lugar en fila general y avisar al abrir puertas.',
+        'note': 'Cobertura de fila premium para acceso preferente a evento nocturno.',
+        'instructions': 'Resguardar posición en fila general y confirmar apertura de puertas en tiempo real.',
         'startDate': _formatDate(now.subtract(const Duration(days: 8))),
-        'startTime': '16:00',
-        'workHours': 2.0,
-        'waitHours': 1.0,
-        'price': 250.0,
+        'startTime': '17:03',
+        'basePrice': 260.0,
+        'estimatedHours': 3.0,
+        'waitHours': 2.0,
+        'urgencyLevel': 'urgent',
       },
       {
         'title': 'Hospital privado',
         'location': 'Hospital Puerta de Hierro',
-        'note': 'Esperar en recepción y avisar cuando sea el turno. Pago 300 MXN.',
-        'instructions': 'Registrar llegada en recepción y notificar cuando llamen al paciente.',
+        'note': 'Gestión de fila en admisión para ingreso programado.',
+        'instructions': 'Realizar check-in en recepción y notificar al paciente cuando falte poco.',
         'startDate': _formatDate(now.subtract(const Duration(days: 10))),
-        'startTime': '12:00',
-        'workHours': 2.0,
+        'startTime': '10:41',
+        'basePrice': 220.0,
+        'estimatedHours': 2.0,
         'waitHours': 1.0,
-        'price': 300.0,
+        'urgencyLevel': 'priority',
       },
       {
         'title': 'Oficina de gobierno',
         'location': 'Recaudadora Estatal Guadalajara',
-        'note': 'Apoyo en fila para trámite administrativo. Pago 400 MXN.',
-        'instructions': 'Formarse en ventanilla de trámites y avisar cuando falten 10 personas.',
+        'note': 'Fila para trámite administrativo con validación en ventanilla oficial.',
+        'instructions': 'Permanecer en fila de trámites y avisar cuando queden 10 personas.',
         'startDate': _formatDate(now.subtract(const Duration(days: 12))),
-        'startTime': '09:30',
-        'workHours': 2.5,
-        'waitHours': 1.0,
-        'price': 400.0,
+        'startTime': '12:26',
+        'basePrice': 210.0,
+        'estimatedHours': 2.0,
+        'waitHours': 2.0,
+        'urgencyLevel': 'priority',
       },
       {
-        'title': 'Paquetería',
+        'title': 'Paquetería DHL',
         'location': 'Centro de envíos DHL Providencia',
-        'note': 'Esperar turno para recolección o entrega. Pago 180 MXN.',
-        'instructions': 'Esperar turno en mostrador y avisar cuando el número esté por salir.',
+        'note': 'Apoyo para fila de envío prioritario con documentación física.',
+        'instructions': 'Tomar turno en mostrador y avisar cuando el folio esté próximo a pantalla.',
         'startDate': _formatDate(now.subtract(const Duration(days: 13))),
-        'startTime': '13:30',
-        'workHours': 1.5,
+        'startTime': '16:48',
+        'basePrice': 120.0,
+        'estimatedHours': 1.0,
         'waitHours': 1.0,
-        'price': 180.0,
+        'urgencyLevel': 'normal',
       },
     ];
 
@@ -371,8 +394,16 @@ class FirestoreTaskService {
       final task = demoTasks[i];
       final createdAt = createdTimes[i];
       final completedAt = createdAt.add(Duration(minutes: 45 + (i * 17)));
-      final workHours = (task['workHours'] as num).toDouble();
+      final basePrice = (task['basePrice'] as num).toDouble();
+      final urgencyLevel = (task['urgencyLevel'] as String?) ?? 'normal';
+      final estimatedHours = (task['estimatedHours'] as num).toDouble();
       final waitHours = (task['waitHours'] as num).toDouble();
+      final finalPrice = computeFinalPrice(
+        basePrice: basePrice,
+        estimatedHours: estimatedHours,
+        waitHours: waitHours,
+        urgencyLevel: urgencyLevel,
+      );
       await _tasks.add({
         'title': task['title'],
         'location': task['location'],
@@ -380,10 +411,13 @@ class FirestoreTaskService {
         'instructions': task['instructions'],
         'startDate': task['startDate'],
         'startTime': task['startTime'],
-        'workHours': workHours,
+        'basePrice': basePrice,
+        'urgencyLevel': urgencyLevel,
+        'estimatedHours': estimatedHours,
+        'workHours': estimatedHours,
         'waitHours': waitHours,
-        'totalHours': workHours + waitHours,
-        'price': task['price'],
+        'totalHours': estimatedHours + waitHours,
+        'price': finalPrice,
         'status': 'completed',
         'createdAt': Timestamp.fromDate(createdAt),
         'ownerId': ownerId,
@@ -422,6 +456,37 @@ class FirestoreTaskService {
     final batch = FirebaseFirestore.instance.batch();
     for (final doc in snapshot.docs) {
       batch.delete(doc.reference);
+    }
+    await batch.commit();
+    return snapshot.docs.length;
+  }
+
+  Future<int> regenerateDemoPrices() async {
+    final snapshot = await _tasks
+        .where('isDemo', isEqualTo: true)
+        .where('isHistoryExample', isEqualTo: true)
+        .get();
+    if (snapshot.docs.isEmpty) return 0;
+    final batch = FirebaseFirestore.instance.batch();
+    for (final doc in snapshot.docs) {
+      final task = FirestoreTask.fromDoc(doc);
+      final basePrice = task.basePrice > 0 ? task.basePrice : max(100, task.price - 200);
+      final urgencyLevel = _normalizeUrgencyLevel(task.urgencyLevel);
+      final estimatedHours = task.estimatedHours > 0 ? task.estimatedHours : task.workHours;
+      final finalPrice = computeFinalPrice(
+        basePrice: basePrice,
+        estimatedHours: estimatedHours,
+        waitHours: task.waitHours,
+        urgencyLevel: urgencyLevel,
+      );
+      batch.set(doc.reference, {
+        'basePrice': basePrice,
+        'urgencyLevel': urgencyLevel,
+        'estimatedHours': estimatedHours,
+        'workHours': estimatedHours,
+        'totalHours': estimatedHours + task.waitHours,
+        'price': finalPrice,
+      }, SetOptions(merge: true));
     }
     await batch.commit();
     return snapshot.docs.length;
@@ -897,25 +962,58 @@ class FirestoreTaskService {
 
   bool _hasText(String? text) => text != null && text.trim().isNotEmpty;
 
+  double computeFinalPrice({
+    required double basePrice,
+    required double estimatedHours,
+    required double waitHours,
+    required String urgencyLevel,
+  }) {
+    final urgencyBonus = switch (_normalizeUrgencyLevel(urgencyLevel)) {
+      'priority' => 150.0,
+      'urgent' => 300.0,
+      _ => 0.0,
+    };
+    final value =
+        basePrice + (estimatedHours * 120) + (waitHours * 80) + urgencyBonus;
+    return max(_minimumPriceMxn, value);
+  }
+
+  String _normalizeUrgencyLevel(String value) {
+    switch (value) {
+      case 'priority':
+      case 'urgent':
+        return value;
+      default:
+        return 'normal';
+    }
+  }
+
   String _generateHandoffCode() {
     final value = Random().nextInt(9000) + 1000;
     return 'QG-$value';
   }
 
   List<DateTime> _generateDemoCreatedTimes(DateTime now) {
-    final offsets = <Duration>[
-      const Duration(hours: 11),
-      const Duration(days: 2, hours: 4),
-      const Duration(days: 4, hours: 7),
-      const Duration(days: 5, hours: 13),
-      const Duration(days: 6, hours: 22),
-      const Duration(days: 9, hours: 9),
-      const Duration(days: 11, hours: 18),
-      const Duration(days: 13, hours: 6),
+    return [
+      _demoDateAt(now: now, daysAgo: 1, hour: 9, minute: 7),
+      _demoDateAt(now: now, daysAgo: 3, hour: 11, minute: 19),
+      _demoDateAt(now: now, daysAgo: 4, hour: 14, minute: 34),
+      _demoDateAt(now: now, daysAgo: 6, hour: 10, minute: 52),
+      _demoDateAt(now: now, daysAgo: 7, hour: 16, minute: 26),
+      _demoDateAt(now: now, daysAgo: 8, hour: 13, minute: 3),
+      _demoDateAt(now: now, daysAgo: 11, hour: 17, minute: 41),
+      _demoDateAt(now: now, daysAgo: 14, hour: 12, minute: 48),
     ];
-    return offsets
-        .map((offset) => now.subtract(offset))
-        .toList(growable: false);
+  }
+
+  DateTime _demoDateAt({
+    required DateTime now,
+    required int daysAgo,
+    required int hour,
+    required int minute,
+  }) {
+    final base = now.subtract(Duration(days: daysAgo));
+    return DateTime(base.year, base.month, base.day, hour, minute);
   }
 
   String _normalizeCode(String code) =>

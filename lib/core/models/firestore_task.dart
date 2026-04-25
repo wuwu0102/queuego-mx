@@ -9,6 +9,9 @@ class FirestoreTask {
     required this.instructions,
     required this.startDate,
     required this.startTime,
+    required this.basePrice,
+    required this.urgencyLevel,
+    required this.estimatedHours,
     required this.workHours,
     required this.waitHours,
     required this.totalHours,
@@ -47,6 +50,9 @@ class FirestoreTask {
   final String instructions;
   final String startDate;
   final String startTime;
+  final double basePrice;
+  final String urgencyLevel;
+  final double estimatedHours;
   final double workHours;
   final double waitHours;
   final double totalHours;
@@ -87,7 +93,10 @@ class FirestoreTask {
       instructions: (data['instructions'] ?? data['note'] ?? '') as String,
       startDate: (data['startDate'] ?? '') as String,
       startTime: (data['startTime'] ?? '') as String,
-      workHours: _numToDouble(data['workHours']),
+      basePrice: _numToDouble(data['basePrice']),
+      urgencyLevel: (data['urgencyLevel'] ?? 'normal') as String,
+      estimatedHours: _numToDouble(data['estimatedHours'] ?? data['workHours']),
+      workHours: _numToDouble(data['workHours'] ?? data['estimatedHours']),
       waitHours: _numToDouble(data['waitHours']),
       totalHours: _numToDouble(data['totalHours']),
       price: _numToDouble(data['price']),

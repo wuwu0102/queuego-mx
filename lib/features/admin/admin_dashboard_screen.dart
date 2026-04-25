@@ -20,7 +20,7 @@ class AdminDashboardScreen extends StatefulWidget {
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   bool _isSeeding = false;
   bool _isDeleting = false;
-  bool _isConverting = false;
+  bool _isRegenerating = false;
 
   Future<void> _seedDemoTasks(BuildContext context) async {
     if (_isSeeding) return;
@@ -83,20 +83,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
-  Future<void> _convertOpenDemos(BuildContext context) async {
-    if (_isConverting) return;
+  Future<void> _regenerateDemoPrices(BuildContext context) async {
+    if (_isRegenerating) return;
     final user = FirebaseAuth.instance.currentUser;
     if (!isAdminUser(user)) return;
     final s = AppStrings.of(context);
-    setState(() => _isConverting = true);
+    setState(() => _isRegenerating = true);
     try {
-      final converted = await FirestoreTaskService.instance.convertOpenDemoTasksToHistory();
+      final regenerated = await FirestoreTaskService.instance.regenerateDemoPrices();
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(s.t('demoOpenTasksConverted').replaceAll('{count}', '$converted'))),
+        SnackBar(content: Text(s.t('demoPricesRegenerated').replaceAll('{count}', '$regenerated'))),
       );
     } finally {
-      if (mounted) setState(() => _isConverting = false);
+      if (mounted) setState(() => _isRegenerating = false);
     }
   }
 
@@ -180,15 +180,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       label: Text(s.t('deleteDemoTasks')),
                     ),
                     OutlinedButton.icon(
-                      onPressed: _isConverting ? null : () => _convertOpenDemos(context),
-                      icon: _isConverting
+                      onPressed: _isRegenerating ? null : () => _regenerateDemoPrices(context),
+                      icon: _isRegenerating
                           ? const SizedBox(
                               width: 14,
                               height: 14,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Icon(Icons.history_toggle_off_outlined),
-                      label: Text(s.t('convertOpenDemosToHistory')),
+                          : const Icon(Icons.auto_fix_high_outlined),
+                      label: Text(s.t('regenerateDemoPrices')),
                     ),
                   ],
                 ),
