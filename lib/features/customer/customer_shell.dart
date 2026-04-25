@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/i18n/app_strings.dart';
 import '../../core/models/firestore_task.dart';
+import '../../core/models/task_application.dart';
 import '../../core/services/firestore_task_service.dart';
 
 class CustomerShell extends StatefulWidget {
@@ -19,6 +21,7 @@ class _CustomerShellState extends State<CustomerShell> {
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final s = AppStrings.of(context);
     final pages = [
       CreateTaskPage(
         ownerId: uid,
@@ -32,9 +35,15 @@ class _CustomerShellState extends State<CustomerShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: current,
         onDestinationSelected: (value) => setState(() => current = value),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.add_circle_outline), label: '發任務'),
-          NavigationDestination(icon: Icon(Icons.list_alt_outlined), label: '我的任務'),
+        destinations: [
+          NavigationDestination(
+            icon: const Icon(Icons.add_circle_outline),
+            label: s.t('createTask'),
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.list_alt_outlined),
+            label: s.t('myTasks'),
+          ),
         ],
       ),
     );
@@ -105,15 +114,16 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   }
 
   Future<void> _submit() async {
+    final s = AppStrings.of(context);
     if (!_formKey.currentState!.validate() || _startDate == null || _startTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('請完整填寫欄位')),
+        SnackBar(content: Text(s.t('fillAllFields'))),
       );
       return;
     }
     if (widget.ownerId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('尚未登入 anonymous user')),
+        SnackBar(content: Text(s.t('notLoggedIn'))),
       );
       return;
     }
@@ -145,7 +155,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       widget.onCreated();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('任務已寫入 Firestore')),
+        SnackBar(content: Text(s.t('taskPublished'))),
       );
     } finally {
       if (mounted) {
@@ -156,8 +166,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('建立任務（Firestore）')),
+      appBar: AppBar(title: Text(s.t('publishTask'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -167,13 +178,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
               children: [
                 TextFormField(
                   controller: _titleController,
-                  decoration: const InputDecoration(labelText: 'title（任務內容）'),
+                  decoration: InputDecoration(labelText: s.t('taskDescription')),
                   validator: _required,
                 ),
                 const SizedBox(height: 10),
                 TextFormField(
                   controller: _locationController,
-                  decoration: const InputDecoration(labelText: 'location（地點）'),
+                  decoration: InputDecoration(labelText: s.t('locationInput')),
                   validator: _required,
                 ),
                 const SizedBox(height: 10),
@@ -181,41 +192,67 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   controller: _noteController,
                   minLines: 2,
                   maxLines: 3,
-                  decoration: const InputDecoration(labelText: 'note（現場指示）'),
+                  decoration: InputDecoration(labelText: s.t('onsiteInstructions')),
                   validator: _required,
                 ),
                 const SizedBox(height: 10),
                 ListTile(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: const BorderSide(color: Colors.grey)),
-                  title: Text(_startDate == null ? 'startDate（開始日期）' : DateFormat('yyyy-MM-dd').format(_startDate!)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: const BorderSide(color: Colors.grey),
+                  ),
+                  title: Text(
+                    _startDate == null
+                        ? s.t('startDateInput')
+                        : DateFormat('yyyy-MM-dd').format(_startDate!),
+                  ),
                   trailing: const Icon(Icons.calendar_month),
                   onTap: _pickDate,
                 ),
                 const SizedBox(height: 10),
                 ListTile(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: const BorderSide(color: Colors.grey)),
-                  title: Text(_startTime == null ? 'startTime（開始時間）' : _startTime!.format(context)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: const BorderSide(color: Colors.grey),
+                  ),
+                  title: Text(
+                    _startTime == null
+                        ? s.t('startTimeSlotInput')
+                        : _startTime!.format(context),
+                  ),
                   trailing: const Icon(Icons.schedule),
                   onTap: _pickTime,
                 ),
                 const SizedBox(height: 10),
-                _NumberField(controller: _workHoursController, label: 'workHours（工作時數）', onChanged: (_) => setState(() {})),
+                _NumberField(
+                  controller: _workHoursController,
+                  label: s.t('estimatedTaskHoursInput'),
+                  onChanged: (_) => setState(() {}),
+                ),
                 const SizedBox(height: 10),
-                _NumberField(controller: _waitHoursController, label: 'waitHours（等待時數）', onChanged: (_) => setState(() {})),
+                _NumberField(
+                  controller: _waitHoursController,
+                  label: s.t('customerArrivalBufferHoursInput'),
+                  onChanged: (_) => setState(() {}),
+                ),
                 const SizedBox(height: 10),
                 TextFormField(
                   readOnly: true,
-                  decoration: InputDecoration(labelText: 'totalHours（自動）= ${_totalHours.toStringAsFixed(2)}'),
+                  decoration: InputDecoration(
+                    labelText: 'totalHours = ${_totalHours.toStringAsFixed(2)}',
+                  ),
                 ),
                 const SizedBox(height: 10),
-                _NumberField(controller: _priceController, label: 'price（總價 MXN）'),
+                _NumberField(controller: _priceController, label: s.t('totalPriceMxnInput')),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
                     onPressed: _submitting ? null : _submit,
                     icon: const Icon(Icons.publish),
-                    label: Text(_submitting ? '寫入中...' : '發任務（寫入 Firestore）'),
+                    label: Text(
+                      _submitting ? s.t('saving') : s.t('publishTaskButton'),
+                    ),
                   ),
                 ),
               ],
@@ -227,7 +264,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   }
 
   String? _required(String? value) {
-    if (value == null || value.trim().isEmpty) return '必填';
+    final s = AppStrings.of(context);
+    if (value == null || value.trim().isEmpty) return s.t('requiredField');
     return null;
   }
 }
@@ -239,20 +277,21 @@ class OwnerTasksPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('我的任務（Firestore）')),
+      appBar: AppBar(title: Text(s.t('myTasks'))),
       body: StreamBuilder<List<FirestoreTask>>(
         stream: FirestoreTaskService.instance.streamTasksByOwner(ownerId),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(child: Text('讀取失敗：${snapshot.error}'));
+            return Center(child: Text('${s.t('loadFailed')}: ${snapshot.error}'));
           }
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
           final tasks = snapshot.data!;
           if (tasks.isEmpty) {
-            return const Center(child: Text('尚無任務'));
+            return Center(child: Text(s.t('noTasksYet')));
           }
           return ListView.builder(
             padding: const EdgeInsets.all(16),
@@ -275,20 +314,126 @@ class _TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
-        title: Text(task.title),
-        subtitle: Text(
-          '地點: ${task.location}\n'
-          '日期: ${task.startDate} ${task.startTime}\n'
-          '工時: ${task.workHours} + 等待: ${task.waitHours} = ${task.totalHours}\n'
-          '價格: ${task.price} MXN\n'
-          '狀態: ${task.status}\n'
-          'ownerId: ${task.ownerId}\n'
-          'accepterId: ${task.accepterId ?? "-"}',
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => CustomerTaskApplicationsPage(task: task),
+          ),
         ),
-        isThreeLine: true,
+        title: Text(task.title),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${s.t('locationLabel')}: ${task.location}'),
+            Text('${s.t('startDate')}: ${task.startDate} ${task.startTime}'),
+            Text('${s.t('totalPrice')}: ${task.price} MXN'),
+            Text('${s.t('status')}: ${s.statusLabel(task.status)}'),
+            if (task.status == 'open')
+              StreamBuilder<int>(
+                stream: FirestoreTaskService.instance.streamTaskApplicationCount(task.id),
+                builder: (context, snapshot) {
+                  final count = snapshot.data ?? 0;
+                  return Text(s.t('applicantsCount').replaceAll('{count}', '$count'));
+                },
+              ),
+          ],
+        ),
+        trailing: const Icon(Icons.chevron_right),
+      ),
+    );
+  }
+}
+
+class CustomerTaskApplicationsPage extends StatelessWidget {
+  const CustomerTaskApplicationsPage({
+    super.key,
+    required this.task,
+  });
+
+  final FirestoreTask task;
+
+  Future<void> _accept(BuildContext context, TaskApplication app) async {
+    final s = AppStrings.of(context);
+    await FirestoreTaskService.instance.acceptApplication(task: task, application: app);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(s.t('applicationAccepted'))),
+    );
+  }
+
+  Future<void> _reject(BuildContext context, TaskApplication app) async {
+    final s = AppStrings.of(context);
+    await FirestoreTaskService.instance.rejectApplication(app.id);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(s.t('applicationRejected'))),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
+    return Scaffold(
+      appBar: AppBar(title: Text(s.t('taskApplicants'))),
+      body: StreamBuilder<List<TaskApplication>>(
+        stream: FirestoreTaskService.instance.streamApplicationsByTask(task.id),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('${s.t('loadFailed')}: ${snapshot.error}'));
+          }
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final apps = snapshot.data!;
+          if (apps.isEmpty) {
+            return Center(child: Text(s.t('noApplicantsYet')));
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: apps.length,
+            itemBuilder: (context, index) {
+              final app = apps[index];
+              final isPending = task.status == 'open' && app.status == 'pending';
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(app.runnerName, style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      Text('${s.t('myOfferMxn')}: ${app.proposedPriceMxn} MXN'),
+                      Text('${s.t('arrivalHoursInput')}: ${app.estimatedArrivalHours}'),
+                      Text('${s.t('messageToCustomer')}: ${app.message}'),
+                      Text('${s.t('status')}: ${s.statusLabel(app.status)}'),
+                      if (isPending) ...[
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            FilledButton(
+                              onPressed: () => _accept(context, app),
+                              child: Text(s.t('acceptApplication')),
+                            ),
+                            OutlinedButton(
+                              onPressed: () => _reject(context, app),
+                              child: Text(s.t('rejectApplication')),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
@@ -307,14 +452,15 @@ class _NumberField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
     return TextFormField(
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
       decoration: InputDecoration(labelText: label),
       validator: (value) {
-        if (value == null || value.trim().isEmpty) return '必填';
-        if (double.tryParse(value.trim()) == null) return '請輸入數字';
+        if (value == null || value.trim().isEmpty) return s.t('requiredField');
+        if (double.tryParse(value.trim()) == null) return s.t('invalidNumber');
         return null;
       },
       onChanged: onChanged,
