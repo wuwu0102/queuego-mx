@@ -115,9 +115,9 @@ class _AuthStatusCard extends StatelessWidget {
     final s = AppStrings.of(context);
     final uid = user?.uid ?? '';
     final uidTail = uid.length <= 6 ? uid : uid.substring(uid.length - 6);
-    final isAnonymous = user == null || user.isAnonymous;
+    final isAnonymous = user?.isAnonymous ?? true;
     final isEmail = !isAnonymous &&
-        user!.providerData.any((provider) => provider.providerId == 'password');
+        (user?.providerData.any((provider) => provider.providerId == 'password') ?? false);
     final method = isAnonymous ? s.t('authMethodAnonymous') : (isEmail ? s.t('authMethodEmail') : s.t('authMethodUnknown'));
     final userLine = isAnonymous
         ? s.t('currentAnonymousUser').replaceAll('{uid}', uidTail)
