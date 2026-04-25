@@ -15,6 +15,7 @@ class FirestoreTask {
     required this.status,
     required this.createdAt,
     required this.ownerId,
+    required this.accepterId,
   });
 
   final String id;
@@ -30,6 +31,7 @@ class FirestoreTask {
   final String status;
   final DateTime? createdAt;
   final String ownerId;
+  final String? accepterId;
 
   factory FirestoreTask.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? <String, dynamic>{};
@@ -47,6 +49,7 @@ class FirestoreTask {
       status: (data['status'] ?? 'open') as String,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       ownerId: (data['ownerId'] ?? '') as String,
+      accepterId: data['accepterId'] as String?,
     );
   }
 
