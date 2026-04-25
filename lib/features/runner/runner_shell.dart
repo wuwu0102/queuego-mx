@@ -640,7 +640,7 @@ class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
       context: context,
       builder: (_) => AlertDialog(
         title: Text(s.t('requestWhatsappContact')),
-        content: Text(s.t('whatsappFallbackHint')),
+        content: Text(s.t('platformHandoffNotice')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -773,27 +773,19 @@ class _SubmitRatingButton extends StatelessWidget {
   Widget build(BuildContext context) {
     if (fromUserId.isEmpty || toUserId.isEmpty) return const SizedBox.shrink();
     final s = AppStrings.of(context);
-    return StreamBuilder<bool>(
-      stream: FirestoreTaskService.instance.streamHasRated(
-        taskId: task.id,
-        fromUserId: fromUserId,
+    final rated = role == 'customer' ? task.ratedByCustomer : task.ratedByRunner;
+    if (rated) return Text(s.t('alreadyRated'));
+    return TextButton(
+      onPressed: () => showDialog<void>(
+        context: context,
+        builder: (_) => _RatingDialog(
+          taskId: task.id,
+          fromUserId: fromUserId,
+          toUserId: toUserId,
+          role: role,
+        ),
       ),
-      builder: (context, snapshot) {
-        final rated = snapshot.data ?? false;
-        if (rated) return Text(s.t('alreadyRated'));
-        return TextButton(
-          onPressed: () => showDialog<void>(
-            context: context,
-            builder: (_) => _RatingDialog(
-              taskId: task.id,
-              fromUserId: fromUserId,
-              toUserId: toUserId,
-              role: role,
-            ),
-          ),
-          child: Text(ctaLabel),
-        );
-      },
+      child: Text(ctaLabel),
     );
   }
 }

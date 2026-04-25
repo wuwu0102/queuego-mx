@@ -115,7 +115,8 @@ class _AuthStatusCard extends StatelessWidget {
     final s = AppStrings.of(context);
     final uid = user?.uid ?? '';
     final uidTail = uid.length <= 6 ? uid : uid.substring(uid.length - 6);
-    final isAnonymous = user?.isAnonymous ?? true;
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final isAnonymous = currentUser != null && currentUser.isAnonymous;
     final isEmail = !isAnonymous &&
         (user?.providerData.any((provider) => provider.providerId == 'password') ?? false);
     final method = isAnonymous ? s.t('authMethodAnonymous') : (isEmail ? s.t('authMethodEmail') : s.t('authMethodUnknown'));

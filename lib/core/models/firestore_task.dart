@@ -25,6 +25,11 @@ class FirestoreTask {
     required this.cancelledAt,
     required this.whatsappNumber,
     required this.handoffCode,
+    required this.handoffVerified,
+    required this.ratingFromCustomer,
+    required this.ratingFromRunner,
+    required this.ratedByCustomer,
+    required this.ratedByRunner,
   });
 
   final String id;
@@ -49,7 +54,12 @@ class FirestoreTask {
   final DateTime? completedAt;
   final DateTime? cancelledAt;
   final String? whatsappNumber;
-  final String? handoffCode;
+  final String handoffCode;
+  final bool handoffVerified;
+  final double? ratingFromCustomer;
+  final double? ratingFromRunner;
+  final bool ratedByCustomer;
+  final bool ratedByRunner;
 
   factory FirestoreTask.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? <String, dynamic>{};
@@ -76,12 +86,23 @@ class FirestoreTask {
       completedAt: (data['completedAt'] as Timestamp?)?.toDate(),
       cancelledAt: (data['cancelledAt'] as Timestamp?)?.toDate(),
       whatsappNumber: data['whatsappNumber'] as String?,
-      handoffCode: data['handoffCode'] as String?,
+      handoffCode: (data['handoffCode'] ?? '') as String,
+      handoffVerified: (data['handoffVerified'] ?? false) as bool,
+      ratingFromCustomer: _nullableNumToDouble(data['ratingFromCustomer']),
+      ratingFromRunner: _nullableNumToDouble(data['ratingFromRunner']),
+      ratedByCustomer: (data['ratedByCustomer'] ?? false) as bool,
+      ratedByRunner: (data['ratedByRunner'] ?? false) as bool,
     );
   }
 
   static double _numToDouble(dynamic value) {
     if (value is num) return value.toDouble();
     return double.tryParse('$value') ?? 0;
+  }
+
+  static double? _nullableNumToDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse('$value');
   }
 }
