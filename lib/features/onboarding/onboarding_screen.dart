@@ -21,11 +21,21 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      initialData: FirebaseAuth.instance.currentUser,
+      builder: (context, snapshot) {
+        final currentUser = snapshot.data ?? FirebaseAuth.instance.currentUser;
+        return _buildScaffold(context, currentUser);
+      },
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context, User? currentUser) {
     final s = AppStrings.of(context);
-    final user = FirebaseAuth.instance.currentUser;
-    final isLoggedIn = isFormallyLoggedIn(user);
-    final email = user?.email ?? '';
-    final showAdmin = isAdminUser(user);
+    final isLoggedIn = isFormallyLoggedIn(currentUser);
+    final email = currentUser?.email ?? '';
+    final showAdmin = isAdminUser(currentUser);
     return Scaffold(
       appBar: AppBar(
         title: Text(s.t('appName')),
@@ -41,6 +51,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               ),
             ),
+            if (showAdmin)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                child: Chip(
+                  label: Text('Admin'),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
             TextButton(
               onPressed: () async {
                 await FirebaseAuth.instance.signOut();
@@ -85,7 +103,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
               if (showAdmin)
                 ActionChip(
-                  label: const Text('繁體中文'),
+                  label: const Text('繁中'),
                   onPressed: () => widget.onLocaleChanged(const Locale('zh', 'TW')),
                 ),
             ],
