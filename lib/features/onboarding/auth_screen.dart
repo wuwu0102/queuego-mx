@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/i18n/app_strings.dart';
 import '../../core/services/auth_gate.dart';
+import '../../core/services/firestore_task_service.dart';
 
 class LoginModal extends StatefulWidget {
   const LoginModal({super.key});
@@ -27,21 +28,89 @@ class _LoginModalState extends State<LoginModal> {
   }
 
   Future<void> _login() async {
-    await _runAuthAction((email, password) {
-      return FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-    }, successMessage: null, notifyLoginSuccess: true);
+    await _runAuthAction(
+      (email, password) => _signInProgressively(email: email, password: password),
+      successMessage: null,
+      notifyLoginSuccess: true,
+    );
   }
 
   Future<void> _register() async {
-    await _runAuthAction((email, password) {
-      return FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-    }, successMessage: AppStrings.of(context).t('authAccountCreated'));
+    await _runAuthAction(
+      (email, password) => _registerProgressively(email: email, password: password),
+      successMessage: AppStrings.of(context).t('authAccountCreated'),
+    );
+  }
+
+  Future<UserCredential> _signInProgressively({
+    required String email,
+    required String password,
+  }) async {
+    final auth = FirebaseAuth.instance;
+    final current = auth.currentUser;
+    final wasAnonymous = current?.isAnonymous ?? false;
+    final previousUid = wasAnonymous ? (current?.uid ?? '') : '';
+    final credential = EmailAuthProvider.credential(email: email, password: password);
+
+    UserCredential result;
+    if (wasAnonymous && current != null) {
+      try {
+        result = await current.linkWithCredential(credential);
+      } on FirebaseAuthException catch (error) {
+        if (error.code != 'credential-already-in-use' && error.code != 'email-already-in-use') {
+          rethrow;
+        }
+        result = await auth.signInWithEmailAndPassword(email: email, password: password);
+      }
+    } else {
+      result = await auth.signInWithEmailAndPassword(email: email, password: password);
+    }
+
+    await _migrateAnonymousDataIfNeeded(
+      previousAnonymousUid: previousUid,
+      currentUser: result.user,
+    );
+    return result;
+  }
+
+  Future<UserCredential> _registerProgressively({
+    required String email,
+    required String password,
+  }) async {
+    final auth = FirebaseAuth.instance;
+    final current = auth.currentUser;
+    final wasAnonymous = current?.isAnonymous ?? false;
+    final previousUid = wasAnonymous ? (current?.uid ?? '') : '';
+    final credential = EmailAuthProvider.credential(email: email, password: password);
+
+    UserCredential result;
+    if (wasAnonymous && current != null) {
+      result = await current.linkWithCredential(credential);
+    } else {
+      result = await auth.createUserWithEmailAndPassword(email: email, password: password);
+    }
+
+    await _migrateAnonymousDataIfNeeded(
+      previousAnonymousUid: previousUid,
+      currentUser: result.user,
+    );
+    return result;
+  }
+
+  Future<void> _migrateAnonymousDataIfNeeded({
+    required String previousAnonymousUid,
+    required User? currentUser,
+  }) async {
+    final nextUid = currentUser?.uid ?? '';
+    if (previousAnonymousUid.isEmpty || nextUid.isEmpty || previousAnonymousUid == nextUid) {
+      return;
+    }
+    await FirestoreTaskService.instance.migrateAnonymousUserData(
+      fromAnonymousUid: previousAnonymousUid,
+      toFormalUid: nextUid,
+      formalEmail: currentUser?.email,
+      formalDisplayName: currentUser?.displayName,
+    );
   }
 
   Future<void> _runAuthAction(
@@ -155,7 +224,13 @@ class _LoginModalState extends State<LoginModal> {
                 ),
               ),
               const SizedBox(height: 8),
-              Center(child: Text(s.t('continueBrowsing'))),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: _loading ? null : () => Navigator.pop(context, false),
+                  child: Text(s.t('continueBrowsing')),
+                ),
+              ),
             ],
           ),
         ),

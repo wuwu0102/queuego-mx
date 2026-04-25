@@ -23,6 +23,25 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   String? _rolePromptedUid;
   String? _adminWelcomedUid;
+  bool _attemptedAnonymousSignIn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ensureAnonymousSession();
+  }
+
+  Future<void> _ensureAnonymousSession() async {
+    if (_attemptedAnonymousSignIn) return;
+    _attemptedAnonymousSignIn = true;
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) return;
+    try {
+      await FirebaseAuth.instance.signInAnonymously();
+    } on FirebaseAuthException {
+      // Keep the app usable even if anonymous auth is disabled.
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -245,13 +264,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _openPublishFlow(BuildContext context) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (!isFormallyLoggedIn(user)) {
-      final loggedIn = await showLoginModal(context);
-      if (!loggedIn) return;
-      final refreshedUser = FirebaseAuth.instance.currentUser;
-      if (!isFormallyLoggedIn(refreshedUser)) return;
-    }
     if (!context.mounted) return;
     await Navigator.push(
       context,

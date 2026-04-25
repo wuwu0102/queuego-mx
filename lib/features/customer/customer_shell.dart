@@ -24,8 +24,7 @@ class _CustomerShellState extends State<CustomerShell> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final isFormal = isFormallyLoggedIn(user);
-    final uid = isFormal ? (user?.uid ?? '') : '';
+    final uid = user?.uid ?? '';
     final s = AppStrings.of(context);
     final pages = [
       CreateTaskPage(
@@ -144,7 +143,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     final user = FirebaseAuth.instance.currentUser;
     final ownerId = user?.uid ?? '';
     final ownerEmail = user?.email ?? '';
-    if (ownerId.isEmpty || ownerEmail.isEmpty) return;
+    if (ownerId.isEmpty) return;
 
     setState(() => _submitting = true);
     try {
@@ -158,7 +157,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         waitHours: _waitHours,
         price: double.tryParse(_priceController.text.trim()) ?? 0,
         ownerId: ownerId,
-        ownerEmail: ownerEmail,
+        ownerEmail: ownerEmail.isEmpty ? null : ownerEmail,
       );
       _formKey.currentState!.reset();
       _titleController.clear();
@@ -395,7 +394,11 @@ class _TaskCard extends StatelessWidget {
                   '${DateFormat('yyyy-MM-dd HH:mm').format(task.readyForHandoffAt!)}',
                 ),
             ],
-            if (_showHandoffCode(task.status, ownerId.isNotEmpty)) ...[
+            if (_showHandoffCode(
+              task.status,
+              isFormallyLoggedIn(FirebaseAuth.instance.currentUser) &&
+                  ownerId == task.ownerId,
+            )) ...[
               const SizedBox(height: 6),
               _HandoffCodeCard(task: task),
             ],
@@ -576,7 +579,8 @@ class CustomerTaskApplicationsPage extends StatelessWidget {
             children: [
               if (_showHandoffCode(
                 latestTask.status,
-                (FirebaseAuth.instance.currentUser?.uid ?? '') == latestTask.ownerId,
+                isFormallyLoggedIn(FirebaseAuth.instance.currentUser) &&
+                    (FirebaseAuth.instance.currentUser?.uid ?? '') == latestTask.ownerId,
               ))
                 _HandoffCodeCard(task: latestTask),
               if (apps.isEmpty)

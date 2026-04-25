@@ -25,8 +25,7 @@ class _RunnerShellState extends State<RunnerShell> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final isFormal = isFormallyLoggedIn(user);
-    final runnerId = isFormal ? (user?.uid ?? '') : '';
+    final runnerId = user?.uid ?? '';
     final s = AppStrings.of(context);
     final pages = [
       OpenTasksPage(runnerId: runnerId),
