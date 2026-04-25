@@ -39,6 +39,16 @@ class FirestoreTaskService {
     'accepted',
   ];
   static const double _minimumPriceMxn = 250.0;
+  static const Map<String, List<int>> _demoHistoryPriceRangesMxn = {
+    'Paquetería DHL': [420, 520],
+    'Banco BBVA': [450, 580],
+    'Costco Guadalajara': [380, 480],
+    'SAT Guadalajara': [700, 900],
+    'IMSS Clínica': [700, 950],
+    'Hospital privado': [700, 1000],
+    'Oficina de gobierno': [750, 1100],
+    'Concierto / Evento': [800, 1300],
+  };
 
   Future<void> addTask({
     required String title,
@@ -289,6 +299,8 @@ class FirestoreTaskService {
     required String ownerId,
   }) async {
     final now = DateTime.now();
+    final random = math.Random();
+    final usedPrices = <int>{};
     final demoCustomerEmail = 'demo_customer@queuego.mx';
     final demoRunnerEmail = 'demo_runner@queuego.mx';
     final createdTimes = _generateDemoCreatedTimes(now);
@@ -395,16 +407,16 @@ class FirestoreTaskService {
       final task = demoTasks[i];
       final createdAt = createdTimes[i];
       final completedAt = createdAt.add(Duration(minutes: 45 + (i * 17)));
-      final basePrice = parseDouble(task['basePrice']);
+      final seededPrice = _pickDemoHistoryPriceMxn(
+        title: (task['title'] as String?) ?? '',
+        random: random,
+        usedPrices: usedPrices,
+      );
+      final basePrice = parseDouble(seededPrice);
       final urgencyLevel = (task['urgencyLevel'] as String?) ?? 'normal';
       final estimatedHours = parseDouble(task['estimatedHours']);
       final waitHours = parseDouble(task['waitHours']);
-      final finalPrice = computeFinalPrice(
-        basePrice: basePrice,
-        estimatedHours: estimatedHours,
-        waitHours: waitHours,
-        urgencyLevel: urgencyLevel,
-      );
+      final finalPrice = parseDouble(seededPrice);
       await _tasks.add({
         'title': task['title'],
         'location': task['location'],
@@ -469,24 +481,18 @@ class FirestoreTaskService {
         .get();
     if (snapshot.docs.isEmpty) return 0;
     final batch = FirebaseFirestore.instance.batch();
+    final random = math.Random();
+    final usedPrices = <int>{};
     for (final doc in snapshot.docs) {
       final task = FirestoreTask.fromDoc(doc);
-      final basePrice = task.basePrice > 0 ? parseDouble(task.basePrice) : parseDouble(math.max(100.0, task.price - 200.0));
-      final urgencyLevel = _normalizeUrgencyLevel(task.urgencyLevel);
-      final estimatedHours = task.estimatedHours > 0 ? parseDouble(task.estimatedHours) : parseDouble(task.workHours);
-      final finalPrice = computeFinalPrice(
-        basePrice: basePrice,
-        estimatedHours: estimatedHours,
-        waitHours: task.waitHours,
-        urgencyLevel: urgencyLevel,
+      final regeneratedPrice = _pickDemoHistoryPriceMxn(
+        title: task.title,
+        random: random,
+        usedPrices: usedPrices,
+        fallbackPrice: task.price,
       );
       batch.set(doc.reference, {
-        'basePrice': basePrice,
-        'urgencyLevel': urgencyLevel,
-        'estimatedHours': estimatedHours,
-        'workHours': estimatedHours,
-        'totalHours': estimatedHours + task.waitHours,
-        'price': finalPrice,
+        'price': parseDouble(regeneratedPrice),
       }, SetOptions(merge: true));
     }
     await batch.commit();
@@ -1001,6 +1007,41 @@ class FirestoreTaskService {
   String _generateHandoffCode() {
     final value = math.Random().nextInt(9000) + 1000;
     return 'QG-$value';
+  }
+
+  int _pickDemoHistoryPriceMxn({
+    required String title,
+    required math.Random random,
+    required Set<int> usedPrices,
+    double? fallbackPrice,
+  }) {
+    final range = _demoHistoryPriceRangesMxn[title];
+    if (range == null) {
+      var fallback = parseDouble(fallbackPrice).round();
+      if (fallback <= 0) fallback = 420;
+      while (usedPrices.contains(fallback)) {
+        fallback += 1;
+      }
+      usedPrices.add(fallback);
+      return fallback;
+    }
+
+    final min = range[0];
+    final max = range[1];
+    var price = min + random.nextInt((max - min) + 1);
+    var retries = 0;
+    while (usedPrices.contains(price) && retries < 20) {
+      price = min + random.nextInt((max - min) + 1);
+      retries += 1;
+    }
+    while (usedPrices.contains(price)) {
+      price += 1;
+      if (price > max) {
+        price = min;
+      }
+    }
+    usedPrices.add(price);
+    return price;
   }
 
   List<DateTime> _generateDemoCreatedTimes(DateTime now) {
