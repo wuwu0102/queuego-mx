@@ -19,18 +19,13 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  static const _adminEmail = 'admin@queuego.mx';
-
-  bool get _isAdminOverride => Uri.base.queryParameters['admin'] == 'true';
-
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
     final user = FirebaseAuth.instance.currentUser;
     final isLoggedIn = isFormallyLoggedIn(user);
     final email = user?.email ?? '';
-    final isAdminEmail = isLoggedIn && email == _adminEmail;
-    final showAdmin = isAdminEmail || _isAdminOverride;
+    final showAdmin = isAdminUser(user);
     return Scaffold(
       appBar: AppBar(
         title: Text(s.t('appName')),
