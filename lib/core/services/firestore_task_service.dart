@@ -189,6 +189,15 @@ class FirestoreTaskService {
     return _users.doc(uid).snapshots().map((doc) => UserMetrics.fromDoc(uid, doc.data()));
   }
 
+  Stream<int> streamUsersCount() =>
+      _users.snapshots().map((snapshot) => snapshot.docs.length);
+
+  Stream<int> streamApplicationsCount() =>
+      _applications.snapshots().map((snapshot) => snapshot.docs.length);
+
+  Stream<int> streamRatingsCount() =>
+      _ratings.snapshots().map((snapshot) => snapshot.docs.length);
+
   Future<void> applyForTask({
     required String taskId,
     required String runnerId,
@@ -197,6 +206,7 @@ class FirestoreTaskService {
     required double? proposedPriceMxn,
     required String message,
   }) async {
+    await ensureTaskLegacyCompatibility(taskId);
     await _ensureUserMetrics(runnerId);
     final existed = await _applications.where('runnerId', isEqualTo: runnerId).get();
     final alreadyApplied = existed.docs.map(TaskApplication.fromDoc).any(
@@ -228,6 +238,7 @@ class FirestoreTaskService {
     required FirestoreTask task,
     required TaskApplication application,
   }) async {
+    await ensureTaskLegacyCompatibility(task.id);
     await _ensureUserMetrics(application.runnerId);
     await FirebaseFirestore.instance.runTransaction((transaction) async {
       final taskRef = _tasks.doc(task.id);
@@ -286,6 +297,7 @@ class FirestoreTaskService {
     String? progressNote,
     String? progressImageUrl,
   }) async {
+    await ensureTaskLegacyCompatibility(taskId);
     await _tasks.doc(taskId).update({
       'status': 'arrived',
       'arrivedAt': FieldValue.serverTimestamp(),
@@ -329,6 +341,7 @@ class FirestoreTaskService {
     String? progressNote,
     String? progressImageUrl,
   }) async {
+    await ensureTaskLegacyCompatibility(taskId);
     await _tasks.doc(taskId).update({
       'status': 'waiting_for_customer',
       'readyForHandoffAt': FieldValue.serverTimestamp(),
@@ -350,6 +363,7 @@ class FirestoreTaskService {
     required FirestoreTask task,
     required String handoffCodeInput,
   }) async {
+    await ensureTaskLegacyCompatibility(task.id);
     final expectedCode = _normalizeCode(task.handoffCode);
     final expectedDigits = _digitsOnly(expectedCode);
     final inputCode = _normalizeCode(handoffCodeInput);
@@ -380,6 +394,31 @@ class FirestoreTaskService {
     final code = _generateHandoffCode();
     await _tasks.doc(taskId).update({'handoffCode': code});
     return code;
+  }
+
+  Future<void> ensureTaskLegacyCompatibility(String taskId) async {
+    if (taskId.isEmpty) return;
+    final ref = _tasks.doc(taskId);
+    final snapshot = await ref.get();
+    if (!snapshot.exists) return;
+    final data = snapshot.data() ?? <String, dynamic>{};
+    final updates = <String, dynamic>{};
+    final handoffCode = data['handoffCode'];
+    final handoffText = handoffCode is String ? handoffCode : '$handoffCode';
+    if (!_hasText(handoffCode == null ? null : handoffText)) {
+      updates['handoffCode'] = _generateHandoffCode();
+    }
+    if (data['ratedByCustomer'] == null) {
+      updates['ratedByCustomer'] = false;
+    }
+    if (data['ratedByRunner'] == null) {
+      updates['ratedByRunner'] = false;
+    }
+    if (data['handoffVerified'] == null) {
+      updates['handoffVerified'] = false;
+    }
+    if (updates.isEmpty) return;
+    await ref.set(updates, SetOptions(merge: true));
   }
 
   Stream<List<TaskMessage>> streamTaskMessages(String taskId) {

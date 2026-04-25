@@ -63,6 +63,21 @@ class AdminDashboardScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Text('Tasks total: ${tasks.length}'),
               ...statusCounts.entries.map((e) => Text('${e.key}: ${e.value}')),
+              StreamBuilder<int>(
+                stream: FirestoreTaskService.instance.streamUsersCount(),
+                builder: (context, countSnapshot) =>
+                    Text('Users total: ${countSnapshot.data ?? 0}'),
+              ),
+              StreamBuilder<int>(
+                stream: FirestoreTaskService.instance.streamApplicationsCount(),
+                builder: (context, countSnapshot) =>
+                    Text('Applications total: ${countSnapshot.data ?? 0}'),
+              ),
+              StreamBuilder<int>(
+                stream: FirestoreTaskService.instance.streamRatingsCount(),
+                builder: (context, countSnapshot) =>
+                    Text('Ratings total: ${countSnapshot.data ?? 0}'),
+              ),
               const Divider(),
               const Text('Users'),
               StreamBuilder<List<UserMetrics>>(
@@ -92,9 +107,10 @@ class AdminDashboardScreen extends StatelessWidget {
                     title: Text(task.title),
                     subtitle: Text(
                       'Status: ${task.status}\n'
-                      'Owner: ${task.ownerId}\n'
                       'Owner email: ${task.ownerEmail ?? '-'}\n'
-                      'Runner: ${task.runnerId ?? task.accepterId ?? '-'}\n'
+                      'Runner email: ${task.runnerEmail ?? '-'}\n'
+                      'Handoff code: ${task.handoffCode.isEmpty ? '-' : task.handoffCode}\n'
+                      'Created at: ${_format(task.createdAt)}\n'
                       'Completed at: ${_format(task.completedAt)}\n'
                       'Cancelled at: ${_format(task.cancelledAt)}\n'
                       'Legacy anonymous task: ${_isLegacyAnonymousTask(task) ? s.t('legacyAnonymousTask') : '-'}',

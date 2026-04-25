@@ -2,11 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../features/onboarding/auth_screen.dart';
+import 'auth_constants.dart';
 import 'user_profile_service.dart';
-
-const adminEmails = [
-  'chttwm@gmail.com',
-];
 
 bool isFormallyLoggedIn(User? user) {
   final email = user?.email?.trim();
@@ -15,10 +12,9 @@ bool isFormallyLoggedIn(User? user) {
 }
 
 bool isAdminUser(User? user) {
-  if (user == null) return false;
-  if (user.isAnonymous) return false;
-  final email = user.email?.toLowerCase().trim();
-  return email != null && adminEmails.contains(email);
+  final isAnonymous = user?.isAnonymous ?? true;
+  if (user == null || isAnonymous) return false;
+  return isAdminEmail(user.email);
 }
 
 Future<bool> ensureFormalLogin(BuildContext context) async {
