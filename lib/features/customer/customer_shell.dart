@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -86,9 +88,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   final _titleController = TextEditingController();
   final _locationController = TextEditingController();
   final _noteController = TextEditingController();
+  final _basePriceController = TextEditingController(text: '120');
   final _workHoursController = TextEditingController(text: '1');
   final _waitHoursController = TextEditingController(text: '0');
-  final _priceController = TextEditingController(text: '120');
+  final _priceController = TextEditingController(text: '320');
+  String _urgencyLevel = 'normal';
 
   DateTime? _startDate;
   TimeOfDay? _startTime;
@@ -99,6 +103,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     _titleController.dispose();
     _locationController.dispose();
     _noteController.dispose();
+    _basePriceController.dispose();
     _workHoursController.dispose();
     _waitHoursController.dispose();
     _priceController.dispose();
@@ -107,7 +112,14 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
   double get _workHours => double.tryParse(_workHoursController.text.trim()) ?? 0;
   double get _waitHours => double.tryParse(_waitHoursController.text.trim()) ?? 0;
+  double get _basePrice => double.tryParse(_basePriceController.text.trim()) ?? 0;
   double get _totalHours => _workHours + _waitHours;
+  double get _suggestedPrice => FirestoreTaskService.instance.computeFinalPrice(
+        basePrice: _basePrice,
+        estimatedHours: _workHours,
+        waitHours: _waitHours,
+        urgencyLevel: _urgencyLevel,
+      );
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
@@ -144,6 +156,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     final ownerId = user?.uid ?? '';
     final ownerEmail = user?.email ?? '';
     if (ownerId.isEmpty) return;
+    final manualPrice = double.tryParse(_priceController.text.trim()) ?? _suggestedPrice;
+    if (manualPrice < 250) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.t('minimumPriceError'))),
+      );
+      return;
+    }
 
     setState(() => _submitting = true);
     try {
@@ -153,9 +172,14 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         note: _noteController.text.trim(),
         startDate: DateFormat('yyyy-MM-dd').format(_startDate!),
         startTime: _startTime!.format(context),
-        workHours: _workHours,
+        basePrice: _basePrice,
+        urgencyLevel: _urgencyLevel,
+        estimatedHours: _workHours,
         waitHours: _waitHours,
-        price: double.tryParse(_priceController.text.trim()) ?? 0,
+        price: max(
+          250,
+          double.tryParse(_priceController.text.trim()) ?? _suggestedPrice,
+        ),
         ownerId: ownerId,
         ownerEmail: ownerEmail.isEmpty ? null : ownerEmail,
       );
@@ -163,12 +187,14 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       _titleController.clear();
       _locationController.clear();
       _noteController.clear();
+      _basePriceController.text = '120';
       _workHoursController.text = '1';
       _waitHoursController.text = '0';
-      _priceController.text = '120';
+      _priceController.text = '320';
       setState(() {
         _startDate = null;
         _startTime = null;
+        _urgencyLevel = 'normal';
       });
       widget.onCreated();
       if (!mounted) return;
@@ -245,6 +271,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 ),
                 const SizedBox(height: 10),
                 _NumberField(
+                  controller: _basePriceController,
+                  label: s.t('basePriceMxnInput'),
+                  onChanged: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 10),
+                _NumberField(
                   controller: _workHoursController,
                   label: s.t('estimatedTaskHoursInput'),
                   onChanged: (_) => setState(() {}),
@@ -256,6 +288,20 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   onChanged: (_) => setState(() {}),
                 ),
                 const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  value: _urgencyLevel,
+                  decoration: InputDecoration(labelText: s.t('urgencyLevelInput')),
+                  items: [
+                    DropdownMenuItem(value: 'normal', child: Text(s.t('urgencyNormal'))),
+                    DropdownMenuItem(value: 'priority', child: Text(s.t('urgencyPriority'))),
+                    DropdownMenuItem(value: 'urgent', child: Text(s.t('urgencyUrgent'))),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _urgencyLevel = value);
+                  },
+                ),
+                const SizedBox(height: 10),
                 TextFormField(
                   readOnly: true,
                   decoration: InputDecoration(
@@ -263,7 +309,17 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                _NumberField(controller: _priceController, label: s.t('totalPriceMxnInput')),
+                Text(
+                  s
+                      .t('suggestedPriceLabel')
+                      .replaceAll('{price}', _suggestedPrice.toStringAsFixed(0)),
+                ),
+                const SizedBox(height: 8),
+                _NumberField(
+                  controller: _priceController,
+                  label: s.t('totalPriceMxnInput'),
+                  helperText: s.t('minimumPriceHint'),
+                ),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
@@ -868,11 +924,13 @@ class _NumberField extends StatelessWidget {
   const _NumberField({
     required this.controller,
     required this.label,
+    this.helperText,
     this.onChanged,
   });
 
   final TextEditingController controller;
   final String label;
+  final String? helperText;
   final ValueChanged<String>? onChanged;
 
   @override
@@ -882,7 +940,7 @@ class _NumberField extends StatelessWidget {
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
-      decoration: InputDecoration(labelText: label),
+      decoration: InputDecoration(labelText: label, helperText: helperText),
       validator: (value) {
         if (value == null || value.trim().isEmpty) return s.t('requiredField');
         if (double.tryParse(value.trim()) == null) return s.t('invalidNumber');
