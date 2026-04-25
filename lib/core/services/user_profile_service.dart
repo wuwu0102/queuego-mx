@@ -40,9 +40,9 @@ class UserProfileService {
         updates[entry.key] = entry.value;
       }
     }
-    updates['isAdmin'] = isAdmin;
-    if (isAdmin) {
-      updates['role'] = 'both';
+    final existingAdmin = data['isAdmin'] == true;
+    if (!data.containsKey('isAdmin') || (isAdmin && !existingAdmin)) {
+      updates['isAdmin'] = isAdmin;
     }
     if (updates.isEmpty) return false;
     await ref.set(updates, SetOptions(merge: true));

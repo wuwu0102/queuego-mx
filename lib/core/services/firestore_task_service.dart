@@ -48,7 +48,7 @@ class FirestoreTaskService {
     required double waitHours,
     required double price,
     required String ownerId,
-    required String ownerEmail,
+    String? ownerEmail,
   }) async {
     final totalHours = workHours + waitHours;
     await _ensureUserMetrics(ownerId);
@@ -85,6 +85,62 @@ class FirestoreTaskService {
       'ratedByCustomer': false,
       'ratedByRunner': false,
     });
+  }
+
+  Future<void> migrateAnonymousUserData({
+    required String fromAnonymousUid,
+    required String toFormalUid,
+    String? formalEmail,
+    String? formalDisplayName,
+  }) async {
+    if (fromAnonymousUid.isEmpty || toFormalUid.isEmpty || fromAnonymousUid == toFormalUid) {
+      return;
+    }
+    final batch = FirebaseFirestore.instance.batch();
+    final normalizedEmail = formalEmail?.trim();
+    final normalizedName = formalDisplayName?.trim();
+
+    final ownedTasks = await _tasks.where('ownerId', isEqualTo: fromAnonymousUid).get();
+    for (final doc in ownedTasks.docs) {
+      batch.set(doc.reference, {
+        'ownerId': toFormalUid,
+        if (_hasText(normalizedEmail)) 'ownerEmail': normalizedEmail,
+      }, SetOptions(merge: true));
+    }
+
+    final runnerTasks = await _tasks.where('runnerId', isEqualTo: fromAnonymousUid).get();
+    for (final doc in runnerTasks.docs) {
+      batch.set(doc.reference, {
+        'runnerId': toFormalUid,
+        'accepterId': toFormalUid,
+        if (_hasText(normalizedEmail)) 'runnerEmail': normalizedEmail,
+      }, SetOptions(merge: true));
+    }
+
+    final acceptedTasks = await _tasks.where('accepterId', isEqualTo: fromAnonymousUid).get();
+    for (final doc in acceptedTasks.docs) {
+      batch.set(doc.reference, {
+        'accepterId': toFormalUid,
+        if (_hasText(normalizedEmail)) 'runnerEmail': normalizedEmail,
+      }, SetOptions(merge: true));
+    }
+
+    final applications = await _applications.where('runnerId', isEqualTo: fromAnonymousUid).get();
+    for (final doc in applications.docs) {
+      batch.set(doc.reference, {
+        'runnerId': toFormalUid,
+        if (_hasText(normalizedEmail)) 'runnerEmail': normalizedEmail,
+        if (_hasText(normalizedName)) 'runnerName': normalizedName,
+      }, SetOptions(merge: true));
+    }
+
+    final messages = await _messages.where('senderId', isEqualTo: fromAnonymousUid).get();
+    for (final doc in messages.docs) {
+      batch.set(doc.reference, {'senderId': toFormalUid}, SetOptions(merge: true));
+    }
+
+    batch.set(_users.doc(fromAnonymousUid), {'migratedToUid': toFormalUid}, SetOptions(merge: true));
+    await batch.commit();
   }
 
   Stream<List<FirestoreTask>> streamOpenTasks() {

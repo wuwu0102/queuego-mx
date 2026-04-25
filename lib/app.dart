@@ -5,12 +5,7 @@ import 'core/i18n/app_strings.dart';
 import 'features/onboarding/onboarding_screen.dart';
 
 class QueueGoApp extends StatefulWidget {
-  const QueueGoApp({
-    super.key,
-    this.startupNotice,
-  });
-
-  final String? startupNotice;
+  const QueueGoApp({super.key});
 
   @override
   State<QueueGoApp> createState() => _QueueGoAppState();
@@ -39,45 +34,7 @@ class _QueueGoAppState extends State<QueueGoApp> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: _StartupNoticeWrapper(
-        notice: widget.startupNotice,
-        child: home,
-      ),
-    );
-  }
-}
-
-class _StartupNoticeWrapper extends StatelessWidget {
-  const _StartupNoticeWrapper({
-    required this.child,
-    required this.notice,
-  });
-
-  final Widget child;
-  final String? notice;
-
-  @override
-  Widget build(BuildContext context) {
-    if (notice == null) return child;
-
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              color: Colors.amber.shade100,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: Text(
-                notice!,
-                style: Theme.of(context).textTheme.bodyMedium,
-                textAlign: TextAlign.center,
-              ),
-            ),
-            Expanded(child: child),
-          ],
-        ),
-      ),
+      home: home,
     );
   }
 }
