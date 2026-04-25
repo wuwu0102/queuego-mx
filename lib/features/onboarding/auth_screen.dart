@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/i18n/app_strings.dart';
+import '../../core/services/auth_gate.dart';
 
 class LoginModal extends StatefulWidget {
   const LoginModal({super.key});
@@ -31,7 +32,7 @@ class _LoginModalState extends State<LoginModal> {
         email: email,
         password: password,
       );
-    }, successMessage: null);
+    }, successMessage: null, notifyLoginSuccess: true);
   }
 
   Future<void> _register() async {
@@ -45,7 +46,7 @@ class _LoginModalState extends State<LoginModal> {
 
   Future<void> _runAuthAction(
     Future<UserCredential> Function(String email, String password) action,
-    {String? successMessage}
+    {String? successMessage, bool notifyLoginSuccess = false}
   ) async {
     final s = AppStrings.of(context);
     final email = _emailController.text.trim();
@@ -59,8 +60,17 @@ class _LoginModalState extends State<LoginModal> {
 
     setState(() => _loading = true);
     try {
-      await action(email, password);
+      final credential = await action(email, password);
       if (!mounted) return;
+      if (notifyLoginSuccess) {
+        final user = credential.user;
+        final loginMessage = isAdminUser(user)
+            ? s.t('adminLoginSuccess')
+            : s.t('loginSuccess');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(loginMessage)),
+        );
+      }
       if (successMessage != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(successMessage)),

@@ -5,21 +5,19 @@ import '../../features/onboarding/auth_screen.dart';
 
 const adminEmails = [
   'chttwm@gmail.com',
-  // Legacy typo kept for compatibility with previous instructions/account input.
-  'chhtwm@gmail.com',
 ];
 
 bool isFormallyLoggedIn(User? user) {
-  if (user == null) return false;
-  final email = user.email;
-  return !user.isAnonymous && (email != null && email.isNotEmpty);
+  final email = user?.email?.trim();
+  final isAnonymous = user?.isAnonymous ?? true;
+  return !isAnonymous && (email != null && email.isNotEmpty);
 }
 
 bool isAdminUser(User? user) {
-  if (user == null) return false;
-  if (user.isAnonymous) return false;
-  final email = user.email?.toLowerCase().trim();
-  return adminEmails.contains(email);
+  final isAnonymous = user?.isAnonymous ?? true;
+  if (isAnonymous) return false;
+  final email = user?.email?.toLowerCase().trim();
+  return email != null && adminEmails.contains(email);
 }
 
 Future<bool> ensureFormalLogin(BuildContext context) async {

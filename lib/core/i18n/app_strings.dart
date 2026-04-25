@@ -209,6 +209,8 @@ class AppStrings {
       'authUserNotFound': 'Este correo no está registrado',
       'authAccountCreated': 'Cuenta creada correctamente',
       'authUnknownError': 'No se pudo iniciar sesión',
+      'loginSuccess': 'Sesión iniciada correctamente',
+      'adminLoginSuccess': 'Administrador conectado',
     },
     'en': {
       'firebaseMockNotice': 'Tasks are stored in an in-memory mock repository.',
@@ -402,6 +404,8 @@ class AppStrings {
       'authUserNotFound': 'This email is not registered',
       'authAccountCreated': 'Account created successfully',
       'authUnknownError': 'Could not sign in',
+      'loginSuccess': 'Logged in successfully',
+      'adminLoginSuccess': 'Admin login successful',
     },
     'zh-TW': {
       'firebaseMockNotice': '目前使用記憶體 mock repository 儲存任務。',
@@ -590,6 +594,8 @@ class AppStrings {
       'authUserNotFound': '此信箱尚未註冊',
       'authAccountCreated': '帳號建立成功',
       'authUnknownError': '登入失敗，請稍後再試',
+      'loginSuccess': 'Logged in successfully',
+      'adminLoginSuccess': '管理員登入成功',
     },
   };
 
