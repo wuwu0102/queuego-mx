@@ -9,6 +9,7 @@ import '../../core/models/task_application.dart';
 import '../../core/models/task_message.dart';
 import '../../core/models/user_metrics.dart';
 import '../../core/services/firestore_task_service.dart';
+import '../../core/services/auth_gate.dart';
 
 class CustomerShell extends StatefulWidget {
   const CustomerShell({super.key});
@@ -22,11 +23,12 @@ class _CustomerShellState extends State<CustomerShell> {
 
   @override
   Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final user = FirebaseAuth.instance.currentUser;
+    final isFormal = isFormallyLoggedIn(user);
+    final uid = isFormal ? (user?.uid ?? '') : '';
     final s = AppStrings.of(context);
     final pages = [
       CreateTaskPage(
-        ownerId: uid,
         onCreated: () => setState(() => current = 1),
       ),
       OwnerTasksPage(ownerId: uid),
@@ -71,11 +73,9 @@ class _ModeHeader extends StatelessWidget {
 class CreateTaskPage extends StatefulWidget {
   const CreateTaskPage({
     super.key,
-    required this.ownerId,
     required this.onCreated,
   });
 
-  final String ownerId;
   final VoidCallback onCreated;
 
   @override
@@ -133,18 +133,18 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
   Future<void> _submit() async {
     final s = AppStrings.of(context);
+    final canContinue = await ensureFormalLogin(context);
+    if (!canContinue) return;
     if (!_formKey.currentState!.validate() || _startDate == null || _startTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(s.t('fillAllFields'))),
       );
       return;
     }
-    if (widget.ownerId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(s.t('notLoggedIn'))),
-      );
-      return;
-    }
+    final user = FirebaseAuth.instance.currentUser;
+    final ownerId = user?.uid ?? '';
+    final ownerEmail = user?.email ?? '';
+    if (ownerId.isEmpty || ownerEmail.isEmpty) return;
 
     setState(() => _submitting = true);
     try {
@@ -157,7 +157,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         workHours: _workHours,
         waitHours: _waitHours,
         price: double.tryParse(_priceController.text.trim()) ?? 0,
-        ownerId: widget.ownerId,
+        ownerId: ownerId,
+        ownerEmail: ownerEmail,
       );
       _formKey.currentState!.reset();
       _titleController.clear();
@@ -337,6 +338,8 @@ class _TaskCard extends StatelessWidget {
 
   Future<void> _cancelTask(BuildContext context) async {
     final s = AppStrings.of(context);
+    final canContinue = await ensureFormalLogin(context);
+    if (!canContinue) return;
     await FirestoreTaskService.instance.cancelTask(task.id);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -392,7 +395,7 @@ class _TaskCard extends StatelessWidget {
                   '${DateFormat('yyyy-MM-dd HH:mm').format(task.readyForHandoffAt!)}',
                 ),
             ],
-            if (_showHandoffCode(task.status)) ...[
+            if (_showHandoffCode(task.status, ownerId.isNotEmpty)) ...[
               const SizedBox(height: 6),
               _HandoffCodeCard(task: task),
             ],
@@ -458,8 +461,9 @@ class _TaskCard extends StatelessWidget {
   bool _showWhatsAppButton(String status) =>
       status == 'accepted' || status == 'arrived' || status == 'waiting_for_customer';
 
-  bool _showHandoffCode(String status) =>
-      status == 'accepted' || status == 'arrived' || status == 'waiting_for_customer';
+  bool _showHandoffCode(String status, bool isOwner) =>
+      isOwner &&
+      (status == 'accepted' || status == 'arrived' || status == 'waiting_for_customer');
 
   void _showWhatsAppHint(BuildContext context) {
     final s = AppStrings.of(context);
@@ -521,6 +525,8 @@ class CustomerTaskApplicationsPage extends StatelessWidget {
 
   Future<void> _accept(BuildContext context, TaskApplication app) async {
     final s = AppStrings.of(context);
+    final canContinue = await ensureFormalLogin(context);
+    if (!canContinue) return;
     await FirestoreTaskService.instance.acceptApplication(task: task, application: app);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -530,6 +536,8 @@ class CustomerTaskApplicationsPage extends StatelessWidget {
 
   Future<void> _reject(BuildContext context, TaskApplication app) async {
     final s = AppStrings.of(context);
+    final canContinue = await ensureFormalLogin(context);
+    if (!canContinue) return;
     await FirestoreTaskService.instance.rejectApplication(app.id);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -566,7 +574,10 @@ class CustomerTaskApplicationsPage extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              if (_showHandoffCode(latestTask.status))
+              if (_showHandoffCode(
+                latestTask.status,
+                (FirebaseAuth.instance.currentUser?.uid ?? '') == latestTask.ownerId,
+              ))
                 _HandoffCodeCard(task: latestTask),
               if (apps.isEmpty)
                 Padding(
@@ -655,8 +666,9 @@ class _HandoffCodeCard extends StatelessWidget {
   }
 }
 
-bool _showHandoffCode(String status) =>
-    status == 'accepted' || status == 'arrived' || status == 'waiting_for_customer';
+bool _showHandoffCode(String status, bool isOwner) =>
+    isOwner &&
+    (status == 'accepted' || status == 'arrived' || status == 'waiting_for_customer');
 
 
 class _TrustScorePanel extends StatelessWidget {
@@ -901,6 +913,8 @@ class _CustomerTaskMessagesSectionState extends State<_CustomerTaskMessagesSecti
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+    final canContinue = await ensureFormalLogin(context);
+    if (!canContinue) return;
     setState(() => _sending = true);
     try {
       await FirestoreTaskService.instance.sendTaskMessage(

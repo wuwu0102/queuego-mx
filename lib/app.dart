@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
@@ -19,19 +17,7 @@ class QueueGoApp extends StatefulWidget {
 }
 
 class _QueueGoAppState extends State<QueueGoApp> {
-  late Locale locale;
-
-  @override
-  void initState() {
-    super.initState();
-    locale = _resolveDefaultLocale(PlatformDispatcher.instance.locale);
-  }
-
-  Locale _resolveDefaultLocale(Locale browserLocale) {
-    if (browserLocale.languageCode == 'es') return const Locale('es', 'MX');
-    if (browserLocale.languageCode == 'en') return const Locale('en');
-    return const Locale('zh', 'TW');
-  }
+  Locale locale = const Locale('es', 'MX');
 
   @override
   Widget build(BuildContext context) {

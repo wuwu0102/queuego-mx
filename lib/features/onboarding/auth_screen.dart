@@ -97,6 +97,11 @@ class _AuthScreenState extends State<AuthScreen> {
             onPressed: _loading ? null : _register,
             child: Text(s.t('registerCta')),
           ),
+          const SizedBox(height: 10),
+          TextButton(
+            onPressed: _loading ? null : () => Navigator.pop(context),
+            child: Text(s.t('continueBrowsing')),
+          ),
         ],
       ),
     );

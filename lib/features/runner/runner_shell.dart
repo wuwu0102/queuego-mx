@@ -9,6 +9,7 @@ import '../../core/models/task_application.dart';
 import '../../core/models/task_message.dart';
 import '../../core/models/user_metrics.dart';
 import '../../core/services/firestore_task_service.dart';
+import '../../core/services/auth_gate.dart';
 
 class RunnerShell extends StatefulWidget {
   const RunnerShell({super.key});
@@ -22,7 +23,9 @@ class _RunnerShellState extends State<RunnerShell> {
 
   @override
   Widget build(BuildContext context) {
-    final runnerId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final user = FirebaseAuth.instance.currentUser;
+    final isFormal = isFormallyLoggedIn(user);
+    final runnerId = isFormal ? (user?.uid ?? '') : '';
     final s = AppStrings.of(context);
     final pages = [
       OpenTasksPage(runnerId: runnerId),
@@ -146,12 +149,17 @@ class _OpenTaskCard extends StatelessWidget {
                 return Align(
                   alignment: Alignment.centerRight,
                   child: FilledButton.icon(
-                    onPressed: runnerId.isEmpty
-                        ? null
-                        : () => showDialog<void>(
-                              context: context,
-                              builder: (_) => ApplyTaskDialog(task: task, runnerId: runnerId),
-                            ),
+                    onPressed: () async {
+                      final canContinue = await ensureFormalLogin(context);
+                      if (!canContinue || !context.mounted) return;
+                      final user = FirebaseAuth.instance.currentUser;
+                      final userId = user?.uid ?? '';
+                      if (userId.isEmpty) return;
+                      showDialog<void>(
+                        context: context,
+                        builder: (_) => ApplyTaskDialog(task: task, runnerId: userId),
+                      );
+                    },
                     icon: const Icon(Icons.send_outlined),
                     label: Text(s.t('applyTask')),
                   ),
@@ -206,6 +214,7 @@ class _ApplyTaskDialogState extends State<ApplyTaskDialog> {
         taskId: widget.task.id,
         runnerId: widget.runnerId,
         runnerName: user?.displayName ?? 'Runner $shortId',
+        runnerEmail: user?.email ?? '',
         proposedPriceMxn: _toNullableDouble(_offerController.text.trim()),
         message: _messageController.text.trim(),
       );
@@ -406,6 +415,8 @@ class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
 
   Future<void> _markArrived() async {
     final s = AppStrings.of(context);
+    final canContinue = await ensureFormalLogin(context);
+    if (!canContinue) return;
     setState(() => _loading = true);
     try {
       await FirestoreTaskService.instance.markArrived(
@@ -427,6 +438,8 @@ class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
 
   Future<void> _updateProgress() async {
     final s = AppStrings.of(context);
+    final canContinue = await ensureFormalLogin(context);
+    if (!canContinue) return;
     final note = _progressController.text.trim();
     if (note.isEmpty) return;
     setState(() => _loading = true);
@@ -451,6 +464,8 @@ class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
 
   Future<void> _notifyWaitingForCustomer() async {
     final s = AppStrings.of(context);
+    final canContinue = await ensureFormalLogin(context);
+    if (!canContinue) return;
     setState(() => _loading = true);
     try {
       await FirestoreTaskService.instance.notifyWaitingForCustomer(
@@ -472,6 +487,8 @@ class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
 
   Future<void> _completeByCode() async {
     final s = AppStrings.of(context);
+    final canContinue = await ensureFormalLogin(context);
+    if (!canContinue) return;
     setState(() => _loading = true);
     try {
       await FirestoreTaskService.instance.completeTaskByHandoffCode(
@@ -820,6 +837,8 @@ class _RatingDialogState extends State<_RatingDialog> {
 
   Future<void> _submit() async {
     final s = AppStrings.of(context);
+    final canContinue = await ensureFormalLogin(context);
+    if (!canContinue) return;
     setState(() => _submitting = true);
     try {
       await FirestoreTaskService.instance.submitRating(
@@ -896,6 +915,8 @@ class _TaskMessagesSectionState extends State<_TaskMessagesSection> {
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+    final canContinue = await ensureFormalLogin(context);
+    if (!canContinue) return;
     setState(() => _sending = true);
     try {
       await FirestoreTaskService.instance.sendTaskMessage(

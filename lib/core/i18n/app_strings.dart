@@ -197,6 +197,10 @@ class AppStrings {
       'passwordLabel': 'Password',
       'loginCta': 'Iniciar sesión',
       'registerCta': 'Registrarse',
+      'continueBrowsing': 'Seguir navegando',
+      'formalLoginRequired': 'Debes iniciar sesión con Email para esta acción.',
+      'legacyAnonymousTask': '未綁定正式帳號的舊任務',
+      'adminInternalOnly': 'Admin mode is for internal testing only',
       'authErrorPrefix': 'Error de autenticación',
     },
     'en': {
@@ -379,6 +383,10 @@ class AppStrings {
       'passwordLabel': 'Password',
       'loginCta': 'Login',
       'registerCta': 'Register',
+      'continueBrowsing': 'Continue browsing',
+      'formalLoginRequired': 'Please login with Email/Password to perform this action.',
+      'legacyAnonymousTask': 'Legacy task without a formal account binding',
+      'adminInternalOnly': 'Admin mode is for internal testing only',
       'authErrorPrefix': 'Authentication error',
     },
     'zh-TW': {
@@ -556,6 +564,10 @@ class AppStrings {
       'passwordLabel': 'Password',
       'loginCta': '登入',
       'registerCta': '註冊',
+      'continueBrowsing': '繼續瀏覽',
+      'formalLoginRequired': '此操作需要先使用 Email/Password 正式登入。',
+      'legacyAnonymousTask': '未綁定正式帳號的舊任務',
+      'adminInternalOnly': 'Admin mode is for internal testing only',
       'authErrorPrefix': '驗證失敗',
     },
   };

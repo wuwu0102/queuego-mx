@@ -70,9 +70,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Wrap(
             spacing: 8,
             children: [
-              ActionChip(label: const Text('Español MX'), onPressed: () => widget.onLocaleChanged(const Locale('es', 'MX'))),
-              ActionChip(label: const Text('English'), onPressed: () => widget.onLocaleChanged(const Locale('en'))),
-              ActionChip(label: const Text('繁中'), onPressed: () => widget.onLocaleChanged(const Locale('zh', 'TW'))),
+              ActionChip(
+                label: const Text('Español MX'),
+                onPressed: () => widget.onLocaleChanged(const Locale('es', 'MX')),
+              ),
+              ActionChip(
+                label: const Text('English'),
+                onPressed: () => widget.onLocaleChanged(const Locale('en')),
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -80,19 +85,34 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             icon: Icons.add_circle_outline,
             title: s.t('customer'),
             subtitle: s.t('customerSubtitle'),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerShell())),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const CustomerShell(),
+              ),
+            ),
           ),
           _HomeActionCard(
             icon: Icons.handshake_outlined,
             title: s.t('runner'),
             subtitle: s.t('runnerSubtitle'),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RunnerShell())),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const RunnerShell(),
+              ),
+            ),
           ),
           _HomeActionCard(
             icon: Icons.admin_panel_settings_outlined,
             title: s.t('admin'),
             subtitle: s.t('adminSubtitle'),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminDashboardScreen())),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AdminDashboardScreen(onLocaleChanged: widget.onLocaleChanged),
+              ),
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -115,8 +135,7 @@ class _AuthStatusCard extends StatelessWidget {
     final s = AppStrings.of(context);
     final uid = user?.uid ?? '';
     final uidTail = uid.length <= 6 ? uid : uid.substring(uid.length - 6);
-    final currentUser = FirebaseAuth.instance.currentUser;
-    final isAnonymous = currentUser != null && currentUser.isAnonymous;
+    final isAnonymous = user?.isAnonymous ?? true;
     final isEmail = !isAnonymous &&
         (user?.providerData.any((provider) => provider.providerId == 'password') ?? false);
     final method = isAnonymous ? s.t('authMethodAnonymous') : (isEmail ? s.t('authMethodEmail') : s.t('authMethodUnknown'));
