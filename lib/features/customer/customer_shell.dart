@@ -133,7 +133,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
   Future<void> _submit() async {
     final s = AppStrings.of(context);
-    final canContinue = await ensureFormalLogin(context);
+    final canContinue = await ensureRoleAllowed(context, forPosting: true);
     if (!canContinue) return;
     if (!_formKey.currentState!.validate() || _startDate == null || _startTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -338,7 +338,7 @@ class _TaskCard extends StatelessWidget {
 
   Future<void> _cancelTask(BuildContext context) async {
     final s = AppStrings.of(context);
-    final canContinue = await ensureFormalLogin(context);
+    final canContinue = await ensureRoleAllowed(context, forPosting: true);
     if (!canContinue) return;
     await FirestoreTaskService.instance.cancelTask(task.id);
     if (!context.mounted) return;

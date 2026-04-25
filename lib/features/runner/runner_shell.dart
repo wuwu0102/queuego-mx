@@ -150,7 +150,7 @@ class _OpenTaskCard extends StatelessWidget {
                   alignment: Alignment.centerRight,
                   child: FilledButton.icon(
                     onPressed: () async {
-                      final canContinue = await ensureFormalLogin(context);
+                      final canContinue = await ensureRoleAllowed(context, forPosting: false);
                       if (!canContinue || !context.mounted) return;
                       final user = FirebaseAuth.instance.currentUser;
                       final userId = user?.uid ?? '';
@@ -415,7 +415,7 @@ class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
 
   Future<void> _markArrived() async {
     final s = AppStrings.of(context);
-    final canContinue = await ensureFormalLogin(context);
+    final canContinue = await ensureRoleAllowed(context, forPosting: false);
     if (!canContinue) return;
     setState(() => _loading = true);
     try {
@@ -438,7 +438,7 @@ class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
 
   Future<void> _updateProgress() async {
     final s = AppStrings.of(context);
-    final canContinue = await ensureFormalLogin(context);
+    final canContinue = await ensureRoleAllowed(context, forPosting: false);
     if (!canContinue) return;
     final note = _progressController.text.trim();
     if (note.isEmpty) return;
@@ -464,7 +464,7 @@ class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
 
   Future<void> _notifyWaitingForCustomer() async {
     final s = AppStrings.of(context);
-    final canContinue = await ensureFormalLogin(context);
+    final canContinue = await ensureRoleAllowed(context, forPosting: false);
     if (!canContinue) return;
     setState(() => _loading = true);
     try {
@@ -487,7 +487,7 @@ class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
 
   Future<void> _completeByCode() async {
     final s = AppStrings.of(context);
-    final canContinue = await ensureFormalLogin(context);
+    final canContinue = await ensureRoleAllowed(context, forPosting: false);
     if (!canContinue) return;
     setState(() => _loading = true);
     try {
@@ -837,7 +837,7 @@ class _RatingDialogState extends State<_RatingDialog> {
 
   Future<void> _submit() async {
     final s = AppStrings.of(context);
-    final canContinue = await ensureFormalLogin(context);
+    final canContinue = await ensureRoleAllowed(context, forPosting: false);
     if (!canContinue) return;
     setState(() => _submitting = true);
     try {
@@ -915,7 +915,7 @@ class _TaskMessagesSectionState extends State<_TaskMessagesSection> {
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-    final canContinue = await ensureFormalLogin(context);
+    final canContinue = await ensureRoleAllowed(context, forPosting: false);
     if (!canContinue) return;
     setState(() => _sending = true);
     try {

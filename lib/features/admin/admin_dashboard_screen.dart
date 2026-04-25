@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/i18n/app_strings.dart';
 import '../../core/models/firestore_task.dart';
+import '../../core/models/user_metrics.dart';
 import '../../core/services/firestore_task_service.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
@@ -25,14 +26,22 @@ class AdminDashboardScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           final tasks = snapshot.data!;
-          final completedCount = tasks.where((task) => task.status == 'completed').length;
-          final cancelledCount = tasks.where((task) => task.status == 'cancelled').length;
+          final statusCounts = <String, int>{
+            'open': 0,
+            'accepted': 0,
+            'arrived': 0,
+            'waiting_for_customer': 0,
+            'completed': 0,
+            'cancelled': 0,
+          };
+          for (final t in tasks) {
+            statusCounts[t.status] = (statusCounts[t.status] ?? 0) + 1;
+          }
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
               Text('${s.t('currentMode')}: ${s.t('modeAdmin')}'),
               Text(s.t('adminInternalOnly')),
-              Text(s.t('roleModeNotice')),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -53,8 +62,29 @@ class AdminDashboardScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text('Tasks total: ${tasks.length}'),
-              Text('Completed: $completedCount'),
-              Text('Cancelled: $cancelledCount'),
+              ...statusCounts.entries.map((e) => Text('${e.key}: ${e.value}')),
+              const Divider(),
+              const Text('Users'),
+              StreamBuilder<List<UserMetrics>>(
+                stream: FirestoreTaskService.instance.streamAllUsersMetrics(),
+                builder: (context, userSnapshot) {
+                  final users = userSnapshot.data ?? const <UserMetrics>[];
+                  if (users.isEmpty) return const Text('-');
+                  return Column(
+                    children: users
+                        .map(
+                          (user) => ListTile(
+                            dense: true,
+                            title: Text(user.uid),
+                            subtitle: Text(
+                              'trustScore: ${user.trustScore.toStringAsFixed(1)}, ratingAvg: ${user.ratingAvg.toStringAsFixed(2)}, completedCount: ${user.completedCount}, cancelledCount: ${user.cancelledCount}',
+                            ),
+                          ),
+                        )
+                        .toList(growable: false),
+                  );
+                },
+              ),
               const Divider(),
               ...tasks.map(
                 (task) => Card(
