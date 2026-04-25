@@ -363,6 +363,8 @@ class _TaskCard extends StatelessWidget {
             Text('${s.t('startDate')}: ${task.startDate} ${task.startTime}'),
             Text('${s.t('totalPrice')}: ${task.price} MXN'),
             Text('${s.t('status')}: ${s.statusLabel(task.status)}'),
+            if ((task.progressImageUrl ?? '').isNotEmpty)
+              _ProgressPhotoLink(url: task.progressImageUrl!, label: s.t('progressPhotoProof')),
             if (task.status == 'arrived') ...[
               const SizedBox(height: 6),
               Text(s.t('runnerArrivedNotice')),
@@ -386,6 +388,14 @@ class _TaskCard extends StatelessWidget {
                   '${s.t('readyForHandoffAt')}: '
                   '${DateFormat('yyyy-MM-dd HH:mm').format(task.readyForHandoffAt!)}',
                 ),
+            ],
+            if (_showHandoffCode(task.status) && (task.handoffCode ?? '').isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text('${s.t('handoffCode')}: ${task.handoffCode}'),
+              Text(
+                s.t('handoffShareReminder'),
+                style: TextStyle(color: Theme.of(context).colorScheme.primary),
+              ),
             ],
             if (task.status == 'open')
               StreamBuilder<int>(
@@ -418,11 +428,21 @@ class _TaskCard extends StatelessWidget {
                   label: Text(s.t('requestWhatsappContact')),
                 ),
               ),
-            if (task.status == 'completed')
+            if (task.status == 'completed') ...[
+              const SizedBox(height: 8),
+              Text(
+                s.t('taskCompletedLabel'),
+                style: TextStyle(color: Theme.of(context).colorScheme.primary),
+              ),
+              if (task.completedAt != null)
+                Text('${s.t('completedAt')}: ${DateFormat('yyyy-MM-dd HH:mm').format(task.completedAt!)}'),
               TextButton(
                 onPressed: () {},
                 child: Text(s.t('rateRunner')),
               ),
+            ],
+            if (task.status == 'cancelled' && task.cancelledAt != null)
+              Text('${s.t('cancelledAt')}: ${DateFormat('yyyy-MM-dd HH:mm').format(task.cancelledAt!)}'),
           ],
         ),
         trailing: const Icon(Icons.chevron_right),
@@ -436,6 +456,9 @@ class _TaskCard extends StatelessWidget {
   bool _showWhatsAppButton(String status) =>
       status == 'accepted' || status == 'arrived' || status == 'waiting_for_customer';
 
+  bool _showHandoffCode(String status) =>
+      status == 'accepted' || status == 'arrived' || status == 'waiting_for_customer';
+
   void _showWhatsAppHint(BuildContext context) {
     final s = AppStrings.of(context);
     showDialog<void>(
@@ -447,6 +470,38 @@ class _TaskCard extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(s.t('cancel')),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProgressPhotoLink extends StatelessWidget {
+  const _ProgressPhotoLink({required this.url, required this.label});
+
+  final String url;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        Clipboard.setData(ClipboardData(text: url));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(url)),
+        );
+      },
+      child: Row(
+        children: [
+          const Icon(Icons.image_outlined, size: 18),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '$label: $url',
+              style: TextStyle(color: Theme.of(context).colorScheme.primary),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),

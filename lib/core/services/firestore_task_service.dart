@@ -59,11 +59,13 @@ class FirestoreTaskService {
       'accepterId': null,
       'arrivedAt': null,
       'progressNote': null,
+      'progressImageUrl': null,
       'progressUpdatedAt': null,
       'readyForHandoffAt': null,
       'completedAt': null,
+      'cancelledAt': null,
       'whatsappNumber': null,
-      'handoffCode': null,
+      'handoffCode': _generateHandoffCode(),
     });
   }
 
@@ -80,6 +82,13 @@ class FirestoreTaskService {
           .map(FirestoreTask.fromDoc)
           .where((task) => task.ownerId == ownerId)
           .toList(growable: false);
+      return _sortTasksByCreatedAtDesc(tasks);
+    });
+  }
+
+  Stream<List<FirestoreTask>> streamAllTasks() {
+    return _tasks.snapshots().map((snapshot) {
+      final tasks = snapshot.docs.map(FirestoreTask.fromDoc).toList(growable: false);
       return _sortTasksByCreatedAtDesc(tasks);
     });
   }
@@ -199,7 +208,6 @@ class FirestoreTaskService {
         'status': 'accepted',
         'accepterId': application.runnerId,
         'price': application.proposedPriceMxn ?? task.price,
-        'handoffCode': _generateHandoffCode(),
       });
     });
   }
@@ -209,18 +217,23 @@ class FirestoreTaskService {
   }
 
   Future<void> cancelTask(String taskId) async {
-    await _tasks.doc(taskId).update({'status': 'cancelled'});
+    await _tasks.doc(taskId).update({
+      'status': 'cancelled',
+      'cancelledAt': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<void> markArrived({
     required String taskId,
     required String runnerId,
     String? progressNote,
+    String? progressImageUrl,
   }) async {
     await _tasks.doc(taskId).update({
       'status': 'arrived',
       'arrivedAt': FieldValue.serverTimestamp(),
       if (_hasText(progressNote)) 'progressNote': progressNote!.trim(),
+      if (_hasText(progressImageUrl)) 'progressImageUrl': progressImageUrl!.trim(),
       'progressUpdatedAt': FieldValue.serverTimestamp(),
     });
     if (_hasText(progressNote)) {
@@ -238,9 +251,11 @@ class FirestoreTaskService {
     required String senderId,
     required String senderRole,
     required String progressNote,
+    String? progressImageUrl,
   }) async {
     await _tasks.doc(taskId).update({
       'progressNote': progressNote.trim(),
+      if (_hasText(progressImageUrl)) 'progressImageUrl': progressImageUrl!.trim(),
       'progressUpdatedAt': FieldValue.serverTimestamp(),
     });
     await sendTaskMessage(
@@ -255,11 +270,13 @@ class FirestoreTaskService {
     required String taskId,
     required String runnerId,
     String? progressNote,
+    String? progressImageUrl,
   }) async {
     await _tasks.doc(taskId).update({
       'status': 'waiting_for_customer',
       'readyForHandoffAt': FieldValue.serverTimestamp(),
       if (_hasText(progressNote)) 'progressNote': progressNote!.trim(),
+      if (_hasText(progressImageUrl)) 'progressImageUrl': progressImageUrl!.trim(),
       'progressUpdatedAt': FieldValue.serverTimestamp(),
     });
     if (_hasText(progressNote)) {
@@ -276,9 +293,15 @@ class FirestoreTaskService {
     required FirestoreTask task,
     required String handoffCodeInput,
   }) async {
-    final taskCode = _normalizeCode(task.handoffCode ?? '');
+    final expectedCode = _normalizeCode(task.handoffCode ?? '');
+    final expectedDigits = _digitsOnly(expectedCode);
     final inputCode = _normalizeCode(handoffCodeInput);
-    if (taskCode.isEmpty || inputCode.isEmpty || taskCode != inputCode) {
+    final inputDigits = _digitsOnly(inputCode);
+    final matches =
+        inputCode.isNotEmpty &&
+        (inputCode == expectedCode ||
+            (inputDigits.isNotEmpty && inputDigits == expectedDigits));
+    if (!matches) {
       throw StateError('code_mismatch');
     }
     await _tasks.doc(task.id).update({
@@ -347,11 +370,13 @@ class FirestoreTaskService {
   bool _hasText(String? text) => text != null && text.trim().isNotEmpty;
 
   String _generateHandoffCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     final rng = Random();
-    return List.generate(6, (_) => chars[rng.nextInt(chars.length)]).join();
+    final digits = List.generate(4, (_) => rng.nextInt(10)).join();
+    return 'QG-$digits';
   }
 
   String _normalizeCode(String code) =>
       code.replaceAll(RegExp(r'[\s-]'), '').toUpperCase();
+
+  String _digitsOnly(String value) => value.replaceAll(RegExp(r'[^0-9]'), '');
 }
