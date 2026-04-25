@@ -999,7 +999,7 @@ class FirestoreTaskService {
   }
 
   String _generateHandoffCode() {
-    final value = Random().nextInt(9000) + 1000;
+    final value = math.Random().nextInt(9000) + 1000;
     return 'QG-$value';
   }
 
