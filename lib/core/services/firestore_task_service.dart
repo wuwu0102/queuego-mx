@@ -138,8 +138,7 @@ class FirestoreTaskService {
     required String taskId,
     required String runnerId,
     required String runnerName,
-    required double proposedPriceMxn,
-    required double estimatedArrivalHours,
+    required double? proposedPriceMxn,
     required String message,
   }) async {
     final existed = await _applications.where('runnerId', isEqualTo: runnerId).get();
@@ -159,7 +158,6 @@ class FirestoreTaskService {
       'runnerId': runnerId,
       'runnerName': runnerName,
       'proposedPriceMxn': proposedPriceMxn,
-      'estimatedArrivalHours': estimatedArrivalHours,
       'message': message,
       'status': 'pending',
       'createdAt': FieldValue.serverTimestamp(),
@@ -188,14 +186,17 @@ class FirestoreTaskService {
       transaction.update(taskRef, {
         'status': 'accepted',
         'accepterId': application.runnerId,
-        'price': application.proposedPriceMxn,
-        'waitHours': application.estimatedArrivalHours,
+        'price': application.proposedPriceMxn ?? task.price,
       });
     });
   }
 
   Future<void> rejectApplication(String applicationId) async {
     await _applications.doc(applicationId).update({'status': 'rejected'});
+  }
+
+  Future<void> cancelTask(String taskId) async {
+    await _tasks.doc(taskId).update({'status': 'cancelled'});
   }
 
   List<FirestoreTask> _sortTasksByCreatedAtDesc(List<FirestoreTask> tasks) {

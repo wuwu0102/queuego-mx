@@ -50,6 +50,22 @@ class _CustomerShellState extends State<CustomerShell> {
   }
 }
 
+class _ModeHeader extends StatelessWidget {
+  const _ModeHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Text(
+        '${s.t('currentMode')}: ${s.t('modeCustomer')}',
+        style: Theme.of(context).textTheme.bodyMedium,
+      ),
+    );
+  }
+}
+
 class CreateTaskPage extends StatefulWidget {
   const CreateTaskPage({
     super.key,
@@ -172,6 +188,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          const _ModeHeader(),
+          const SizedBox(height: 8),
           Form(
             key: _formKey,
             child: Column(
@@ -293,13 +311,13 @@ class OwnerTasksPage extends StatelessWidget {
           if (tasks.isEmpty) {
             return Center(child: Text(s.t('noTasksYet')));
           }
-          return ListView.builder(
+          return ListView(
             padding: const EdgeInsets.all(16),
-            itemCount: tasks.length,
-            itemBuilder: (context, index) {
-              final task = tasks[index];
-              return _TaskCard(task: task);
-            },
+            children: [
+              const _ModeHeader(),
+              const SizedBox(height: 10),
+              ...tasks.map((task) => _TaskCard(task: task)),
+            ],
           );
         },
       ),
@@ -311,6 +329,17 @@ class _TaskCard extends StatelessWidget {
   const _TaskCard({required this.task});
 
   final FirestoreTask task;
+
+  bool get _showCancel => task.status == 'open' || task.status == 'negotiating';
+
+  Future<void> _cancelTask(BuildContext context) async {
+    final s = AppStrings.of(context);
+    await FirestoreTaskService.instance.cancelTask(task.id);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(s.t('taskCancelled'))),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -339,6 +368,15 @@ class _TaskCard extends StatelessWidget {
                   final count = snapshot.data ?? 0;
                   return Text(s.t('applicantsCount').replaceAll('{count}', '$count'));
                 },
+              ),
+            if (_showCancel)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: OutlinedButton.icon(
+                  onPressed: () => _cancelTask(context),
+                  icon: const Icon(Icons.cancel_outlined),
+                  label: Text(s.t('cancelTask')),
+                ),
               ),
           ],
         ),
@@ -407,8 +445,11 @@ class CustomerTaskApplicationsPage extends StatelessWidget {
                     children: [
                       Text(app.runnerName, style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: 8),
-                      Text('${s.t('myOfferMxn')}: ${app.proposedPriceMxn} MXN'),
-                      Text('${s.t('arrivalHoursInput')}: ${app.estimatedArrivalHours}'),
+                      Text(
+                        app.proposedPriceMxn == null
+                            ? '${s.t('myOfferMxn')}: ${s.t('acceptOriginalPrice')}'
+                            : '${s.t('myOfferMxn')}: ${app.proposedPriceMxn} MXN',
+                      ),
                       Text('${s.t('messageToCustomer')}: ${app.message}'),
                       Text('${s.t('status')}: ${s.statusLabel(app.status)}'),
                       if (isPending) ...[

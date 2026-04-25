@@ -51,6 +51,22 @@ class _RunnerShellState extends State<RunnerShell> {
   }
 }
 
+class _ModeHeader extends StatelessWidget {
+  const _ModeHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Text(
+        '${s.t('currentMode')}: ${s.t('modeRunner')}',
+        style: Theme.of(context).textTheme.bodyMedium,
+      ),
+    );
+  }
+}
+
 class OpenTasksPage extends StatelessWidget {
   const OpenTasksPage({super.key, required this.runnerId});
 
@@ -74,13 +90,13 @@ class OpenTasksPage extends StatelessWidget {
           if (tasks.isEmpty) {
             return Center(child: Text(s.t('noOpenTasks')));
           }
-          return ListView.builder(
+          return ListView(
             padding: const EdgeInsets.all(16),
-            itemCount: tasks.length,
-            itemBuilder: (context, index) {
-              final task = tasks[index];
-              return _OpenTaskCard(task: task, runnerId: runnerId);
-            },
+            children: [
+              const _ModeHeader(),
+              const SizedBox(height: 10),
+              ...tasks.map((task) => _OpenTaskCard(task: task, runnerId: runnerId)),
+            ],
           );
         },
       ),
@@ -163,14 +179,12 @@ class ApplyTaskDialog extends StatefulWidget {
 class _ApplyTaskDialogState extends State<ApplyTaskDialog> {
   final _formKey = GlobalKey<FormState>();
   final _offerController = TextEditingController();
-  final _arrivalController = TextEditingController();
   final _messageController = TextEditingController();
   bool _submitting = false;
 
   @override
   void dispose() {
     _offerController.dispose();
-    _arrivalController.dispose();
     _messageController.dispose();
     super.dispose();
   }
@@ -189,8 +203,7 @@ class _ApplyTaskDialogState extends State<ApplyTaskDialog> {
         taskId: widget.task.id,
         runnerId: widget.runnerId,
         runnerName: user?.displayName ?? 'Runner $shortId',
-        proposedPriceMxn: double.parse(_offerController.text.trim()),
-        estimatedArrivalHours: double.parse(_arrivalController.text.trim()),
+        proposedPriceMxn: _toNullableDouble(_offerController.text.trim()),
         message: _messageController.text.trim(),
       );
 
@@ -225,11 +238,7 @@ class _ApplyTaskDialogState extends State<ApplyTaskDialog> {
               _numericField(
                 controller: _offerController,
                 label: s.t('myOfferMxn'),
-              ),
-              const SizedBox(height: 10),
-              _numericField(
-                controller: _arrivalController,
-                label: s.t('arrivalHoursInput'),
+                required: false,
               ),
               const SizedBox(height: 10),
               TextFormField(
@@ -237,10 +246,6 @@ class _ApplyTaskDialogState extends State<ApplyTaskDialog> {
                 minLines: 2,
                 maxLines: 4,
                 decoration: InputDecoration(labelText: s.t('messageToCustomer')),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) return s.t('requiredField');
-                  return null;
-                },
               ),
             ],
           ),
@@ -259,7 +264,11 @@ class _ApplyTaskDialogState extends State<ApplyTaskDialog> {
     );
   }
 
-  Widget _numericField({required TextEditingController controller, required String label}) {
+  Widget _numericField({
+    required TextEditingController controller,
+    required String label,
+    required bool required,
+  }) {
     final s = AppStrings.of(context);
     return TextFormField(
       controller: controller,
@@ -267,11 +276,17 @@ class _ApplyTaskDialogState extends State<ApplyTaskDialog> {
       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
       decoration: InputDecoration(labelText: label),
       validator: (value) {
+        if ((value == null || value.trim().isEmpty) && !required) return null;
         if (value == null || value.trim().isEmpty) return s.t('requiredField');
         if (double.tryParse(value.trim()) == null) return s.t('invalidNumber');
         return null;
       },
     );
+  }
+
+  double? _toNullableDouble(String value) {
+    if (value.trim().isEmpty) return null;
+    return double.tryParse(value.trim());
   }
 }
 
@@ -298,24 +313,26 @@ class RunnerApplicationsPage extends StatelessWidget {
           if (apps.isEmpty) {
             return Center(child: Text(s.t('noApplicationsYet')));
           }
-          return ListView.builder(
+          return ListView(
             padding: const EdgeInsets.all(16),
-            itemCount: apps.length,
-            itemBuilder: (context, index) {
-              final app = apps[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 10),
-                child: ListTile(
-                  title: Text('${s.t('taskId')}: ${app.taskId}'),
-                  subtitle: Text(
-                    '${s.t('myOfferMxn')}: ${app.proposedPriceMxn} MXN\n'
-                    '${s.t('arrivalHoursInput')}: ${app.estimatedArrivalHours}\n'
-                    '${s.t('messageToCustomer')}: ${app.message}\n'
-                    '${s.t('status')}: ${s.statusLabel(app.status)}',
+            children: [
+              const _ModeHeader(),
+              const SizedBox(height: 10),
+              ...apps.map(
+                (app) => Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  child: ListTile(
+                    title: Text('${s.t('taskId')}: ${app.taskId}'),
+                    subtitle: Text(
+                      '${s.t('myOfferMxn')}: '
+                      '${app.proposedPriceMxn == null ? s.t('acceptOriginalPrice') : '${app.proposedPriceMxn} MXN'}\n'
+                      '${s.t('messageToCustomer')}: ${app.message}\n'
+                      '${s.t('status')}: ${s.statusLabel(app.status)}',
+                    ),
                   ),
                 ),
-              );
-            },
+              ),
+            ],
           );
         },
       ),
@@ -346,24 +363,26 @@ class RunnerActiveTasksPage extends StatelessWidget {
           if (tasks.isEmpty) {
             return Center(child: Text(s.t('noActiveTasks')));
           }
-          return ListView.builder(
+          return ListView(
             padding: const EdgeInsets.all(16),
-            itemCount: tasks.length,
-            itemBuilder: (context, index) {
-              final task = tasks[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 10),
-                child: ListTile(
-                  title: Text(task.title),
-                  subtitle: Text(
-                    '${s.t('locationLabel')}: ${task.location}\n'
-                    '${s.t('totalPrice')}: ${task.price} MXN\n'
-                    '${s.t('customerArrivalBufferHours')}: ${task.waitHours}\n'
-                    '${s.t('status')}: ${s.statusLabel(task.status)}',
+            children: [
+              const _ModeHeader(),
+              const SizedBox(height: 10),
+              ...tasks.map(
+                (task) => Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  child: ListTile(
+                    title: Text(task.title),
+                    subtitle: Text(
+                      '${s.t('locationLabel')}: ${task.location}\n'
+                      '${s.t('totalPrice')}: ${task.price} MXN\n'
+                      '${s.t('customerArrivalBufferHours')}: ${task.waitHours}\n'
+                      '${s.t('status')}: ${s.statusLabel(task.status)}',
+                    ),
                   ),
                 ),
-              );
-            },
+              ),
+            ],
           );
         },
       ),
