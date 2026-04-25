@@ -30,7 +30,6 @@ class FirestoreTaskService {
   static const List<String> _runnerActiveStatuses = [
     'accepted',
     'arrived',
-    'in_progress',
     'waiting_for_customer',
   ];
 
@@ -75,6 +74,11 @@ class FirestoreTaskService {
       'cancelledAt': null,
       'whatsappNumber': null,
       'handoffCode': _generateHandoffCode(),
+      'handoffVerified': false,
+      'ratingFromCustomer': null,
+      'ratingFromRunner': null,
+      'ratedByCustomer': false,
+      'ratedByRunner': false,
     });
   }
 
@@ -236,7 +240,7 @@ class FirestoreTaskService {
     await FirebaseFirestore.instance.runTransaction((transaction) async {
       final snapshot = await transaction.get(ref);
       final task = FirestoreTask.fromDoc(snapshot);
-      if (!(task.status == 'open' || task.status == 'negotiating')) {
+      if (task.status != 'open') {
         throw StateError('cancel_forbidden');
       }
       transaction.update(ref, {
@@ -322,7 +326,7 @@ class FirestoreTaskService {
     required FirestoreTask task,
     required String handoffCodeInput,
   }) async {
-    final expectedCode = _normalizeCode(task.handoffCode ?? '');
+    final expectedCode = _normalizeCode(task.handoffCode);
     final expectedDigits = _digitsOnly(expectedCode);
     final inputCode = _normalizeCode(handoffCodeInput);
     final inputDigits = _digitsOnly(inputCode);
@@ -336,6 +340,7 @@ class FirestoreTaskService {
     await _tasks.doc(task.id).update({
       'status': 'completed',
       'completedAt': FieldValue.serverTimestamp(),
+      'handoffVerified': true,
     });
 
     if (task.ownerId.isNotEmpty) {
@@ -436,6 +441,14 @@ class FirestoreTaskService {
         'rating': rating,
         'comment': comment?.trim(),
         'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      final isCustomerRating = role == 'customer';
+      transaction.update(taskRef, {
+        if (isCustomerRating) 'ratingFromCustomer': rating.toDouble(),
+        if (isCustomerRating) 'ratedByCustomer': true,
+        if (!isCustomerRating) 'ratingFromRunner': rating.toDouble(),
+        if (!isCustomerRating) 'ratedByRunner': true,
       });
 
       transaction.set(userRef, {
@@ -539,9 +552,8 @@ class FirestoreTaskService {
   bool _hasText(String? text) => text != null && text.trim().isNotEmpty;
 
   String _generateHandoffCode() {
-    final rng = Random();
-    final digits = List.generate(4, (_) => rng.nextInt(10)).join();
-    return 'QG-$digits';
+    final value = Random().nextInt(900000) + 100000;
+    return '$value';
   }
 
   String _normalizeCode(String code) =>

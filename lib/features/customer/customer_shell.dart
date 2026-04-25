@@ -333,7 +333,7 @@ class _TaskCard extends StatelessWidget {
   final FirestoreTask task;
   final String ownerId;
 
-  bool get _showCancel => task.status == 'open' || task.status == 'negotiating';
+  bool get _showCancel => task.status == 'open';
 
   Future<void> _cancelTask(BuildContext context) async {
     final s = AppStrings.of(context);
@@ -341,15 +341,6 @@ class _TaskCard extends StatelessWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(s.t('taskCancelled'))),
-    );
-  }
-
-  Future<void> _generateHandoffCode(BuildContext context) async {
-    final s = AppStrings.of(context);
-    await FirestoreTaskService.instance.generateHandoffCodeForTask(task.id);
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(s.t('handoffCodeGenerated'))),
     );
   }
 
@@ -403,10 +394,7 @@ class _TaskCard extends StatelessWidget {
             ],
             if (_showHandoffCode(task.status)) ...[
               const SizedBox(height: 6),
-              _HandoffCodeCard(
-                task: task,
-                onGeneratePressed: () => _generateHandoffCode(context),
-              ),
+              _HandoffCodeCard(task: task),
             ],
             if (task.status == 'open')
               StreamBuilder<int>(
@@ -479,7 +467,7 @@ class _TaskCard extends StatelessWidget {
       context: context,
       builder: (_) => AlertDialog(
         title: Text(s.t('requestWhatsappContact')),
-        content: Text(s.t('whatsappFallbackHint')),
+        content: Text(s.t('platformHandoffNotice')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -579,12 +567,7 @@ class CustomerTaskApplicationsPage extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             children: [
               if (_showHandoffCode(latestTask.status))
-                _HandoffCodeCard(
-                  task: latestTask,
-                  onGeneratePressed: () async {
-                    await FirestoreTaskService.instance.generateHandoffCodeForTask(task.id);
-                  },
-                ),
+                _HandoffCodeCard(task: latestTask),
               if (apps.isEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 16),
@@ -642,15 +625,13 @@ class CustomerTaskApplicationsPage extends StatelessWidget {
 }
 
 class _HandoffCodeCard extends StatelessWidget {
-  const _HandoffCodeCard({required this.task, required this.onGeneratePressed});
+  const _HandoffCodeCard({required this.task});
 
   final FirestoreTask task;
-  final VoidCallback onGeneratePressed;
 
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
-    final hasCode = (task.handoffCode ?? '').isNotEmpty;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -663,18 +644,11 @@ class _HandoffCodeCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            hasCode ? s.t('handoffCardCode').replaceAll('{code}', task.handoffCode!) : s.t('handoffCodeMissing'),
+            s.t('handoffCardCode').replaceAll('{code}', task.handoffCode),
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 6),
           Text(s.t('handoffCardInstruction')),
-          if (!hasCode) ...[
-            const SizedBox(height: 8),
-            FilledButton(
-              onPressed: onGeneratePressed,
-              child: Text(s.t('generateHandoffCode')),
-            ),
-          ],
         ],
       ),
     );
@@ -756,29 +730,21 @@ class _SubmitRatingButton extends StatelessWidget {
   Widget build(BuildContext context) {
     if (fromUserId.isEmpty || toUserId.isEmpty) return const SizedBox.shrink();
     final s = AppStrings.of(context);
-    return StreamBuilder<bool>(
-      stream: FirestoreTaskService.instance.streamHasRated(
-        taskId: task.id,
-        fromUserId: fromUserId,
+    final rated = role == 'customer' ? task.ratedByCustomer : task.ratedByRunner;
+    if (rated) {
+      return Text(s.t('alreadyRated'));
+    }
+    return TextButton(
+      onPressed: () => showDialog<void>(
+        context: context,
+        builder: (_) => _RatingDialog(
+          taskId: task.id,
+          fromUserId: fromUserId,
+          toUserId: toUserId,
+          role: role,
+        ),
       ),
-      builder: (context, snapshot) {
-        final rated = snapshot.data ?? false;
-        if (rated) {
-          return Text(s.t('alreadyRated'));
-        }
-        return TextButton(
-          onPressed: () => showDialog<void>(
-            context: context,
-            builder: (_) => _RatingDialog(
-              taskId: task.id,
-              fromUserId: fromUserId,
-              toUserId: toUserId,
-              role: role,
-            ),
-          ),
-          child: Text(ctaLabel),
-        );
-      },
+      child: Text(ctaLabel),
     );
   }
 }
