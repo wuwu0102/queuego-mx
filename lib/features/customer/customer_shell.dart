@@ -60,7 +60,7 @@ class _ModeHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Text(
-        '${s.t('currentMode')}: ${s.t('modeCustomer')}',
+        '${s.t('currentMode')}: ${s.t('modeCustomer')}\n${s.t('roleModeNotice')}',
         style: Theme.of(context).textTheme.bodyMedium,
       ),
     );
@@ -343,6 +343,15 @@ class _TaskCard extends StatelessWidget {
     );
   }
 
+  Future<void> _generateHandoffCode(BuildContext context) async {
+    final s = AppStrings.of(context);
+    await FirestoreTaskService.instance.generateHandoffCodeForTask(task.id);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(s.t('handoffCodeGenerated'))),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
@@ -389,12 +398,11 @@ class _TaskCard extends StatelessWidget {
                   '${DateFormat('yyyy-MM-dd HH:mm').format(task.readyForHandoffAt!)}',
                 ),
             ],
-            if (_showHandoffCode(task.status) && (task.handoffCode ?? '').isNotEmpty) ...[
+            if (_showHandoffCode(task.status)) ...[
               const SizedBox(height: 6),
-              Text('${s.t('handoffCode')}: ${task.handoffCode}'),
-              Text(
-                s.t('handoffShareReminder'),
-                style: TextStyle(color: Theme.of(context).colorScheme.primary),
+              _HandoffCodeCard(
+                task: task,
+                onGeneratePressed: () => _generateHandoffCode(context),
               ),
             ],
             if (task.status == 'open')
@@ -540,9 +548,20 @@ class CustomerTaskApplicationsPage extends StatelessWidget {
     final s = AppStrings.of(context);
     return Scaffold(
       appBar: AppBar(title: Text(s.t('taskApplicants'))),
-      body: StreamBuilder<List<TaskApplication>>(
-        stream: FirestoreTaskService.instance.streamApplicationsByTask(task.id),
-        builder: (context, snapshot) {
+      body: StreamBuilder<List<FirestoreTask>>(
+        stream: FirestoreTaskService.instance.streamTasksByOwner(task.ownerId),
+        builder: (context, taskSnapshot) {
+          final allTasks = taskSnapshot.data ?? const <FirestoreTask>[];
+          FirestoreTask latestTask = task;
+          for (final item in allTasks) {
+            if (item.id == task.id) {
+              latestTask = item;
+              break;
+            }
+          }
+          return StreamBuilder<List<TaskApplication>>(
+            stream: FirestoreTaskService.instance.streamApplicationsByTask(task.id),
+            builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text(s.t('loadDataRetry')));
           }
@@ -550,51 +569,63 @@ class CustomerTaskApplicationsPage extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           final apps = snapshot.data!;
-          if (apps.isEmpty) {
-            return Center(child: Text(s.t('noApplicantsYet')));
-          }
-          return ListView.builder(
+          return ListView(
             padding: const EdgeInsets.all(16),
-            itemCount: apps.length,
-            itemBuilder: (context, index) {
-              final app = apps[index];
-              final isPending = task.status == 'open' && app.status == 'pending';
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(app.runnerName, style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 8),
-                      Text(
-                        app.proposedPriceMxn == null
-                            ? '${s.t('myOfferMxn')}: ${s.t('acceptOriginalPrice')}'
-                            : '${s.t('myOfferMxn')}: ${app.proposedPriceMxn} MXN',
-                      ),
-                      Text('${s.t('messageToCustomer')}: ${app.message}'),
-                      Text('${s.t('status')}: ${s.statusLabel(app.status)}'),
-                      if (isPending) ...[
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
-                          children: [
-                            FilledButton(
-                              onPressed: () => _accept(context, app),
-                              child: Text(s.t('acceptApplication')),
-                            ),
-                            OutlinedButton(
-                              onPressed: () => _reject(context, app),
-                              child: Text(s.t('rejectApplication')),
+            children: [
+              if (_showHandoffCode(latestTask.status))
+                _HandoffCodeCard(
+                  task: latestTask,
+                  onGeneratePressed: () async {
+                    await FirestoreTaskService.instance.generateHandoffCodeForTask(task.id);
+                  },
+                ),
+              if (apps.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Center(child: Text(s.t('noApplicantsYet'))),
+                )
+              else
+                ...apps.map((app) {
+                  final isPending = latestTask.status == 'open' && app.status == 'pending';
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(app.runnerName, style: Theme.of(context).textTheme.titleMedium),
+                          const SizedBox(height: 8),
+                          Text(
+                            app.proposedPriceMxn == null
+                                ? '${s.t('myOfferMxn')}: ${s.t('acceptOriginalPrice')}'
+                                : '${s.t('myOfferMxn')}: ${app.proposedPriceMxn} MXN',
+                          ),
+                          Text('${s.t('messageToCustomer')}: ${app.message}'),
+                          Text('${s.t('status')}: ${s.statusLabel(app.status)}'),
+                          if (isPending) ...[
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              children: [
+                                FilledButton(
+                                  onPressed: () => _accept(context, app),
+                                  child: Text(s.t('acceptApplication')),
+                                ),
+                                OutlinedButton(
+                                  onPressed: () => _reject(context, app),
+                                  child: Text(s.t('rejectApplication')),
+                                ),
+                              ],
                             ),
                           ],
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              );
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+            ],
+          );
             },
           );
         },
@@ -602,6 +633,49 @@ class CustomerTaskApplicationsPage extends StatelessWidget {
     );
   }
 }
+
+class _HandoffCodeCard extends StatelessWidget {
+  const _HandoffCodeCard({required this.task, required this.onGeneratePressed});
+
+  final FirestoreTask task;
+  final VoidCallback onGeneratePressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
+    final hasCode = (task.handoffCode ?? '').isNotEmpty;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade100,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.amber.shade400),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            hasCode ? s.t('handoffCardCode').replaceAll('{code}', task.handoffCode!) : s.t('handoffCodeMissing'),
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 6),
+          Text(s.t('handoffCardInstruction')),
+          if (!hasCode) ...[
+            const SizedBox(height: 8),
+            FilledButton(
+              onPressed: onGeneratePressed,
+              child: Text(s.t('generateHandoffCode')),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+bool _showHandoffCode(String status) =>
+    status == 'accepted' || status == 'arrived' || status == 'waiting_for_customer';
 
 class _NumberField extends StatelessWidget {
   const _NumberField({

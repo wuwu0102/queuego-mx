@@ -62,7 +62,7 @@ class _ModeHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Text(
-        '${s.t('currentMode')}: ${s.t('modeRunner')}',
+        '${s.t('currentMode')}: ${s.t('modeRunner')}\n${s.t('roleModeNotice')}',
         style: Theme.of(context).textTheme.bodyMedium,
       ),
     );
@@ -573,10 +573,16 @@ class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
             ],
             if (task.status == 'waiting_for_customer') ...[
               const SizedBox(height: 10),
+              Text(
+                s.t('runnerWaitingCodePrompt'),
+                style: TextStyle(color: Theme.of(context).colorScheme.primary),
+              ),
+              const SizedBox(height: 8),
               TextField(
                 controller: _handoffCodeController,
                 decoration: InputDecoration(
                   labelText: s.t('enterHandoffCode'),
+                  hintText: s.t('handoffInputPlaceholder'),
                 ),
               ),
               const SizedBox(height: 8),

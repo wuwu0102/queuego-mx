@@ -29,6 +29,7 @@ class AdminDashboardScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             children: [
               Text('${s.t('currentMode')}: ${s.t('modeAdmin')}'),
+              Text(s.t('roleModeNotice')),
               const SizedBox(height: 8),
               Text('Tasks total: ${tasks.length}'),
               Text('Completed: $completedCount'),
