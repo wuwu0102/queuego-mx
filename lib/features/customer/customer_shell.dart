@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -88,10 +86,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   final _titleController = TextEditingController();
   final _locationController = TextEditingController();
   final _noteController = TextEditingController();
-  final _basePriceController = TextEditingController(text: '120');
   final _workHoursController = TextEditingController(text: '1');
   final _waitHoursController = TextEditingController(text: '0');
-  final _priceController = TextEditingController(text: '320');
+  final _priceController = TextEditingController(text: '250');
   String _urgencyLevel = 'normal';
 
   DateTime? _startDate;
@@ -103,7 +100,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     _titleController.dispose();
     _locationController.dispose();
     _noteController.dispose();
-    _basePriceController.dispose();
     _workHoursController.dispose();
     _waitHoursController.dispose();
     _priceController.dispose();
@@ -112,14 +108,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
   double get _workHours => double.tryParse(_workHoursController.text.trim()) ?? 0;
   double get _waitHours => double.tryParse(_waitHoursController.text.trim()) ?? 0;
-  double get _basePrice => double.tryParse(_basePriceController.text.trim()) ?? 0;
   double get _totalHours => _workHours + _waitHours;
-  double get _suggestedPrice => FirestoreTaskService.instance.computeFinalPrice(
-        basePrice: _basePrice,
-        estimatedHours: _workHours,
-        waitHours: _waitHours,
-        urgencyLevel: _urgencyLevel,
-      );
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
@@ -156,13 +145,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     final ownerId = user?.uid ?? '';
     final ownerEmail = user?.email ?? '';
     if (ownerId.isEmpty) return;
-    final manualPrice = double.tryParse(_priceController.text.trim()) ?? _suggestedPrice;
-    if (manualPrice < 250) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(s.t('minimumPriceError'))),
-      );
-      return;
-    }
+    final userInputPrice = double.tryParse(_priceController.text.trim()) ?? 0;
 
     setState(() => _submitting = true);
     try {
@@ -172,14 +155,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         note: _noteController.text.trim(),
         startDate: DateFormat('yyyy-MM-dd').format(_startDate!),
         startTime: _startTime!.format(context),
-        basePrice: _basePrice,
-        urgencyLevel: _urgencyLevel,
         estimatedHours: _workHours,
-        waitHours: _waitHours,
-        price: max(
-          250,
-          double.tryParse(_priceController.text.trim()) ?? _suggestedPrice,
-        ),
+        waitingHours: _waitHours,
+        priority: _urgencyLevel,
+        userInputPrice: userInputPrice,
         ownerId: ownerId,
         ownerEmail: ownerEmail.isEmpty ? null : ownerEmail,
       );
@@ -187,10 +166,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       _titleController.clear();
       _locationController.clear();
       _noteController.clear();
-      _basePriceController.text = '120';
       _workHoursController.text = '1';
       _waitHoursController.text = '0';
-      _priceController.text = '320';
+      _priceController.text = '250';
       setState(() {
         _startDate = null;
         _startTime = null;
@@ -271,12 +249,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 ),
                 const SizedBox(height: 10),
                 _NumberField(
-                  controller: _basePriceController,
-                  label: s.t('basePriceMxnInput'),
-                  onChanged: (_) => setState(() {}),
-                ),
-                const SizedBox(height: 10),
-                _NumberField(
                   controller: _workHoursController,
                   label: s.t('estimatedTaskHoursInput'),
                   onChanged: (_) => setState(() {}),
@@ -309,16 +281,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                Text(
-                  s
-                      .t('suggestedPriceLabel')
-                      .replaceAll('{price}', _suggestedPrice.toStringAsFixed(0)),
-                ),
+                Text(s.t('suggestedPriceLabel')),
                 const SizedBox(height: 8),
                 _NumberField(
                   controller: _priceController,
                   label: s.t('totalPriceMxnInput'),
-                  helperText: s.t('minimumPriceHint'),
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
@@ -501,7 +468,7 @@ class _TaskCard extends StatelessWidget {
                 task: task,
                 fromUserId: ownerId,
                 toUserId: task.accepterId ?? '',
-                role: 'customer',
+                role: 'owner',
                 ctaLabel: s.t('rateRunner'),
               ),
             ],
@@ -802,7 +769,7 @@ class _SubmitRatingButton extends StatelessWidget {
   Widget build(BuildContext context) {
     if (fromUserId.isEmpty || toUserId.isEmpty) return const SizedBox.shrink();
     final s = AppStrings.of(context);
-    final rated = role == 'customer' ? task.ratedByCustomer : task.ratedByRunner;
+    final rated = role == 'owner' ? task.ratedByCustomer : task.ratedByRunner;
     if (rated) {
       return Text(s.t('alreadyRated'));
     }
@@ -840,14 +807,7 @@ class _RatingDialog extends StatefulWidget {
 
 class _RatingDialogState extends State<_RatingDialog> {
   int _rating = 5;
-  final _commentController = TextEditingController();
   bool _submitting = false;
-
-  @override
-  void dispose() {
-    _commentController.dispose();
-    super.dispose();
-  }
 
   Future<void> _submit() async {
     final s = AppStrings.of(context);
@@ -864,8 +824,7 @@ class _RatingDialogState extends State<_RatingDialog> {
         fromUserId: widget.fromUserId,
         toUserId: widget.toUserId,
         role: widget.role,
-        rating: _rating,
-        comment: _commentController.text.trim(),
+        rating: _rating.toDouble(),
       );
       if (!mounted) return;
       Navigator.pop(context);
@@ -896,13 +855,6 @@ class _RatingDialogState extends State<_RatingDialog> {
                 .map((value) => DropdownMenuItem(value: value, child: Text('⭐ $value')))
                 .toList(growable: false),
             onChanged: (value) => setState(() => _rating = value ?? 5),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _commentController,
-            minLines: 2,
-            maxLines: 4,
-            decoration: InputDecoration(labelText: s.t('ratingCommentHint')),
           ),
         ],
       ),
