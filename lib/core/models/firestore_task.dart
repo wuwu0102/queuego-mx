@@ -6,6 +6,7 @@ class FirestoreTask {
     required this.title,
     required this.location,
     required this.note,
+    required this.instructions,
     required this.startDate,
     required this.startTime,
     required this.workHours,
@@ -35,12 +36,15 @@ class FirestoreTask {
     required this.ratingFromRunner,
     required this.ratedByCustomer,
     required this.ratedByRunner,
+    required this.isDemo,
+    required this.isHistoryExample,
   });
 
   final String id;
   final String title;
   final String location;
   final String note;
+  final String instructions;
   final String startDate;
   final String startTime;
   final double workHours;
@@ -70,6 +74,8 @@ class FirestoreTask {
   final double? ratingFromRunner;
   final bool ratedByCustomer;
   final bool ratedByRunner;
+  final bool isDemo;
+  final bool isHistoryExample;
 
   factory FirestoreTask.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? <String, dynamic>{};
@@ -78,6 +84,7 @@ class FirestoreTask {
       title: (data['title'] ?? '') as String,
       location: (data['location'] ?? '') as String,
       note: (data['note'] ?? '') as String,
+      instructions: (data['instructions'] ?? data['note'] ?? '') as String,
       startDate: (data['startDate'] ?? '') as String,
       startTime: (data['startTime'] ?? '') as String,
       workHours: _numToDouble(data['workHours']),
@@ -107,6 +114,8 @@ class FirestoreTask {
       ratingFromRunner: _nullableNumToDouble(data['ratingFromRunner']),
       ratedByCustomer: (data['ratedByCustomer'] ?? false) as bool,
       ratedByRunner: (data['ratedByRunner'] ?? false) as bool,
+      isDemo: (data['isDemo'] ?? false) as bool,
+      isHistoryExample: (data['isHistoryExample'] ?? false) as bool,
     );
   }
 

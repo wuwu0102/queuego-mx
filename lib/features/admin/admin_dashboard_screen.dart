@@ -20,14 +20,14 @@ class AdminDashboardScreen extends StatefulWidget {
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   bool _isSeeding = false;
   bool _isDeleting = false;
+  bool _isConverting = false;
 
   Future<void> _seedDemoTasks(BuildContext context) async {
     if (_isSeeding) return;
     final user = FirebaseAuth.instance.currentUser;
     if (!isAdminUser(user)) return;
     final ownerId = user?.uid ?? '';
-    final ownerEmail = user?.email?.trim() ?? '';
-    if (ownerId.isEmpty || ownerEmail.isEmpty) return;
+    if (ownerId.isEmpty) return;
 
     final s = AppStrings.of(context);
     final demoCount = await FirestoreTaskService.instance.countDemoTasks();
@@ -56,7 +56,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     try {
       final created = await FirestoreTaskService.instance.seedDemoTasks(
         ownerId: ownerId,
-        ownerEmail: ownerEmail,
       );
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -81,6 +80,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       );
     } finally {
       if (mounted) setState(() => _isDeleting = false);
+    }
+  }
+
+  Future<void> _convertOpenDemos(BuildContext context) async {
+    if (_isConverting) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (!isAdminUser(user)) return;
+    final s = AppStrings.of(context);
+    setState(() => _isConverting = true);
+    try {
+      final converted = await FirestoreTaskService.instance.convertOpenDemoTasksToHistory();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.t('demoOpenTasksConverted').replaceAll('{count}', '$converted'))),
+      );
+    } finally {
+      if (mounted) setState(() => _isConverting = false);
     }
   }
 
@@ -163,6 +179,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           : const Icon(Icons.delete_sweep_outlined),
                       label: Text(s.t('deleteDemoTasks')),
                     ),
+                    OutlinedButton.icon(
+                      onPressed: _isConverting ? null : () => _convertOpenDemos(context),
+                      icon: _isConverting
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.history_toggle_off_outlined),
+                      label: Text(s.t('convertOpenDemosToHistory')),
+                    ),
                   ],
                 ),
               ],
@@ -215,6 +242,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       'Status: ${task.status}\n'
                       'Owner email: ${task.ownerEmail ?? '-'}\n'
                       'Runner email: ${task.runnerEmail ?? '-'}\n'
+                      'isDemo: ${task.isDemo}\n'
+                      'isHistoryExample: ${task.isHistoryExample}\n'
                       'Handoff code: ${task.handoffCode.isEmpty ? '-' : task.handoffCode}\n'
                       'Created at: ${_format(task.createdAt)}\n'
                       'Completed at: ${_format(task.completedAt)}\n'

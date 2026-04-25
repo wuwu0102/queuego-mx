@@ -147,9 +147,19 @@ class FirestoreTaskService {
     return _tasks.snapshots().map((snapshot) {
       final tasks = snapshot.docs
           .map(FirestoreTask.fromDoc)
-          .where((task) => task.status != 'cancelled' && task.status != 'completed')
+          .where((task) => task.status == 'open' && !task.isHistoryExample)
           .toList(growable: false);
       return _sortTasksByCreatedAtDesc(tasks);
+    });
+  }
+
+  Stream<List<FirestoreTask>> streamHistoryExampleTasks() {
+    return _tasks.snapshots().map((snapshot) {
+      final tasks = snapshot.docs
+          .map(FirestoreTask.fromDoc)
+          .where((task) => task.status == 'completed' && task.isHistoryExample)
+          .toList(growable: false);
+      return _sortTasksByCompletedAtDesc(tasks);
     });
   }
 
@@ -261,16 +271,18 @@ class FirestoreTaskService {
 
   Future<int> seedDemoTasks({
     required String ownerId,
-    required String ownerEmail,
   }) async {
-    final today = DateTime.now();
+    final now = DateTime.now();
+    final demoCustomerEmail = 'demo_customer@queuego.mx';
+    final demoRunnerEmail = 'demo_runner@queuego.mx';
+    final createdTimes = _generateDemoCreatedTimes(now);
     final demoTasks = <Map<String, dynamic>>[
       {
         'title': 'SAT Guadalajara',
         'location': 'SAT Guadalajara Centro',
         'note': 'Necesito apoyo para hacer fila para trámite fiscal. Pago 300 MXN.',
         'instructions': 'Esperar en la fila principal y avisar cuando falten 15 lugares.',
-        'startDate': _formatDate(today.add(const Duration(days: 1))),
+        'startDate': _formatDate(now.subtract(const Duration(days: 2))),
         'startTime': '08:30',
         'workHours': 2.0,
         'waitHours': 1.0,
@@ -281,7 +293,7 @@ class FirestoreTaskService {
         'location': 'IMSS Clínica 46 Guadalajara',
         'note': 'Ayuda para esperar turno y avisar cuando falte poco. Pago 350 MXN.',
         'instructions': 'Quédate en fila de citas y avisa cuando queden pocos turnos.',
-        'startDate': _formatDate(today.add(const Duration(days: 1))),
+        'startDate': _formatDate(now.subtract(const Duration(days: 1))),
         'startTime': '09:00',
         'workHours': 2.0,
         'waitHours': 1.0,
@@ -292,7 +304,7 @@ class FirestoreTaskService {
         'location': 'Sucursal BBVA Chapalita',
         'note': 'Esperar turno para atención en sucursal. Pago 200 MXN.',
         'instructions': 'Tomar lugar en ventanilla y compartir avance cada 20 minutos.',
-        'startDate': _formatDate(today.add(const Duration(days: 2))),
+        'startDate': _formatDate(now.subtract(const Duration(days: 4))),
         'startTime': '10:00',
         'workHours': 1.5,
         'waitHours': 1.0,
@@ -303,7 +315,7 @@ class FirestoreTaskService {
         'location': 'Costco López Mateos',
         'note': 'Guardar lugar en fila para entrada. Pago 150 MXN.',
         'instructions': 'Resguardar lugar en fila de acceso y avisar antes de entrar.',
-        'startDate': _formatDate(today.add(const Duration(days: 2))),
+        'startDate': _formatDate(now.subtract(const Duration(days: 6))),
         'startTime': '11:30',
         'workHours': 1.0,
         'waitHours': 1.0,
@@ -314,7 +326,7 @@ class FirestoreTaskService {
         'location': 'Auditorio Telmex',
         'note': 'Guardar lugar en fila antes de entrar. Pago 250 MXN.',
         'instructions': 'Mantener el lugar en fila general y avisar al abrir puertas.',
-        'startDate': _formatDate(today.add(const Duration(days: 3))),
+        'startDate': _formatDate(now.subtract(const Duration(days: 8))),
         'startTime': '16:00',
         'workHours': 2.0,
         'waitHours': 1.0,
@@ -325,7 +337,7 @@ class FirestoreTaskService {
         'location': 'Hospital Puerta de Hierro',
         'note': 'Esperar en recepción y avisar cuando sea el turno. Pago 300 MXN.',
         'instructions': 'Registrar llegada en recepción y notificar cuando llamen al paciente.',
-        'startDate': _formatDate(today.add(const Duration(days: 3))),
+        'startDate': _formatDate(now.subtract(const Duration(days: 10))),
         'startTime': '12:00',
         'workHours': 2.0,
         'waitHours': 1.0,
@@ -336,7 +348,7 @@ class FirestoreTaskService {
         'location': 'Recaudadora Estatal Guadalajara',
         'note': 'Apoyo en fila para trámite administrativo. Pago 400 MXN.',
         'instructions': 'Formarse en ventanilla de trámites y avisar cuando falten 10 personas.',
-        'startDate': _formatDate(today.add(const Duration(days: 4))),
+        'startDate': _formatDate(now.subtract(const Duration(days: 12))),
         'startTime': '09:30',
         'workHours': 2.5,
         'waitHours': 1.0,
@@ -347,7 +359,7 @@ class FirestoreTaskService {
         'location': 'Centro de envíos DHL Providencia',
         'note': 'Esperar turno para recolección o entrega. Pago 180 MXN.',
         'instructions': 'Esperar turno en mostrador y avisar cuando el número esté por salir.',
-        'startDate': _formatDate(today.add(const Duration(days: 4))),
+        'startDate': _formatDate(now.subtract(const Duration(days: 13))),
         'startTime': '13:30',
         'workHours': 1.5,
         'waitHours': 1.0,
@@ -355,7 +367,10 @@ class FirestoreTaskService {
       },
     ];
 
-    for (final task in demoTasks) {
+    for (var i = 0; i < demoTasks.length; i++) {
+      final task = demoTasks[i];
+      final createdAt = createdTimes[i];
+      final completedAt = createdAt.add(Duration(minutes: 45 + (i * 17)));
       final workHours = (task['workHours'] as num).toDouble();
       final waitHours = (task['waitHours'] as num).toDouble();
       await _tasks.add({
@@ -369,40 +384,73 @@ class FirestoreTaskService {
         'waitHours': waitHours,
         'totalHours': workHours + waitHours,
         'price': task['price'],
-        'status': 'open',
-        'createdAt': FieldValue.serverTimestamp(),
+        'status': 'completed',
+        'createdAt': Timestamp.fromDate(createdAt),
         'ownerId': ownerId,
-        'ownerEmail': ownerEmail,
+        'ownerEmail': demoCustomerEmail,
         'ownerRole': 'customer',
-        'runnerId': null,
-        'runnerEmail': null,
-        'accepterId': null,
+        'runnerId': 'demo_runner',
+        'runnerEmail': demoRunnerEmail,
+        'accepterId': 'demo_runner',
         'arrivedAt': null,
         'progressNote': null,
         'progressImageUrl': null,
         'progressUpdatedAt': null,
         'readyForHandoffAt': null,
-        'completedAt': null,
+        'completedAt': Timestamp.fromDate(completedAt),
         'cancelledAt': null,
         'whatsappNumber': null,
         'handoffCode': _generateHandoffCode(),
-        'handoffVerified': false,
-        'ratingFromCustomer': null,
-        'ratingFromRunner': null,
-        'ratedByCustomer': false,
-        'ratedByRunner': false,
+        'handoffVerified': true,
+        'ratingFromCustomer': 5.0,
+        'ratingFromRunner': 5.0,
+        'ratedByCustomer': true,
+        'ratedByRunner': true,
         'isDemo': true,
+        'isHistoryExample': true,
       });
     }
     return demoTasks.length;
   }
 
   Future<int> deleteDemoTasks() async {
-    final snapshot = await _tasks.where('isDemo', isEqualTo: true).get();
+    final snapshot = await _tasks
+        .where('isDemo', isEqualTo: true)
+        .where('isHistoryExample', isEqualTo: true)
+        .get();
     if (snapshot.docs.isEmpty) return 0;
     final batch = FirebaseFirestore.instance.batch();
     for (final doc in snapshot.docs) {
       batch.delete(doc.reference);
+    }
+    await batch.commit();
+    return snapshot.docs.length;
+  }
+
+  Future<int> convertOpenDemoTasksToHistory() async {
+    final snapshot = await _tasks
+        .where('isDemo', isEqualTo: true)
+        .where('status', isEqualTo: 'open')
+        .get();
+    if (snapshot.docs.isEmpty) return 0;
+
+    final batch = FirebaseFirestore.instance.batch();
+    final convertedTimes = _generateDemoCreatedTimes(DateTime.now());
+    for (var i = 0; i < snapshot.docs.length; i++) {
+      final doc = snapshot.docs[i];
+      final completedAt = convertedTimes[i % convertedTimes.length];
+      batch.set(doc.reference, {
+        'status': 'completed',
+        'isHistoryExample': true,
+        'completedAt': Timestamp.fromDate(completedAt),
+        'handoffVerified': true,
+        'ratedByCustomer': true,
+        'ratedByRunner': true,
+        'ratingFromCustomer': 5.0,
+        'ratingFromRunner': 5.0,
+        'runnerEmail': 'demo_runner@queuego.mx',
+        'ownerEmail': 'demo_customer@queuego.mx',
+      }, SetOptions(merge: true));
     }
     await batch.commit();
     return snapshot.docs.length;
@@ -806,6 +854,19 @@ class FirestoreTaskService {
     return sorted;
   }
 
+  List<FirestoreTask> _sortTasksByCompletedAtDesc(List<FirestoreTask> tasks) {
+    final copy = [...tasks];
+    copy.sort((a, b) {
+      final completedA = a.completedAt;
+      final completedB = b.completedAt;
+      if (completedA == null && completedB == null) return 0;
+      if (completedA == null) return 1;
+      if (completedB == null) return -1;
+      return completedB.compareTo(completedA);
+    });
+    return copy;
+  }
+
   List<TaskApplication> _sortApplicationsByCreatedAtDesc(
     List<TaskApplication> applications,
   ) {
@@ -839,6 +900,22 @@ class FirestoreTaskService {
   String _generateHandoffCode() {
     final value = Random().nextInt(9000) + 1000;
     return 'QG-$value';
+  }
+
+  List<DateTime> _generateDemoCreatedTimes(DateTime now) {
+    final offsets = <Duration>[
+      const Duration(hours: 11),
+      const Duration(days: 2, hours: 4),
+      const Duration(days: 4, hours: 7),
+      const Duration(days: 5, hours: 13),
+      const Duration(days: 6, hours: 22),
+      const Duration(days: 9, hours: 9),
+      const Duration(days: 11, hours: 18),
+      const Duration(days: 13, hours: 6),
+    ];
+    return offsets
+        .map((offset) => now.subtract(offset))
+        .toList(growable: false);
   }
 
   String _normalizeCode(String code) =>
