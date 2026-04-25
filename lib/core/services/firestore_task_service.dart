@@ -254,6 +254,160 @@ class FirestoreTaskService {
   Stream<int> streamRatingsCount() =>
       _ratings.snapshots().map((snapshot) => snapshot.docs.length);
 
+  Future<int> countDemoTasks() async {
+    final snapshot = await _tasks.where('isDemo', isEqualTo: true).get();
+    return snapshot.docs.length;
+  }
+
+  Future<int> seedDemoTasks({
+    required String ownerId,
+    required String ownerEmail,
+  }) async {
+    final today = DateTime.now();
+    final demoTasks = <Map<String, dynamic>>[
+      {
+        'title': 'SAT Guadalajara',
+        'location': 'SAT Guadalajara Centro',
+        'note': 'Necesito apoyo para hacer fila para trámite fiscal. Pago 300 MXN.',
+        'instructions': 'Esperar en la fila principal y avisar cuando falten 15 lugares.',
+        'startDate': _formatDate(today.add(const Duration(days: 1))),
+        'startTime': '08:30',
+        'workHours': 2.0,
+        'waitHours': 1.0,
+        'price': 300.0,
+      },
+      {
+        'title': 'IMSS Clínica',
+        'location': 'IMSS Clínica 46 Guadalajara',
+        'note': 'Ayuda para esperar turno y avisar cuando falte poco. Pago 350 MXN.',
+        'instructions': 'Quédate en fila de citas y avisa cuando queden pocos turnos.',
+        'startDate': _formatDate(today.add(const Duration(days: 1))),
+        'startTime': '09:00',
+        'workHours': 2.0,
+        'waitHours': 1.0,
+        'price': 350.0,
+      },
+      {
+        'title': 'Banco BBVA',
+        'location': 'Sucursal BBVA Chapalita',
+        'note': 'Esperar turno para atención en sucursal. Pago 200 MXN.',
+        'instructions': 'Tomar lugar en ventanilla y compartir avance cada 20 minutos.',
+        'startDate': _formatDate(today.add(const Duration(days: 2))),
+        'startTime': '10:00',
+        'workHours': 1.5,
+        'waitHours': 1.0,
+        'price': 200.0,
+      },
+      {
+        'title': 'Costco Guadalajara',
+        'location': 'Costco López Mateos',
+        'note': 'Guardar lugar en fila para entrada. Pago 150 MXN.',
+        'instructions': 'Resguardar lugar en fila de acceso y avisar antes de entrar.',
+        'startDate': _formatDate(today.add(const Duration(days: 2))),
+        'startTime': '11:30',
+        'workHours': 1.0,
+        'waitHours': 1.0,
+        'price': 150.0,
+      },
+      {
+        'title': 'Concierto / Evento',
+        'location': 'Auditorio Telmex',
+        'note': 'Guardar lugar en fila antes de entrar. Pago 250 MXN.',
+        'instructions': 'Mantener el lugar en fila general y avisar al abrir puertas.',
+        'startDate': _formatDate(today.add(const Duration(days: 3))),
+        'startTime': '16:00',
+        'workHours': 2.0,
+        'waitHours': 1.0,
+        'price': 250.0,
+      },
+      {
+        'title': 'Hospital privado',
+        'location': 'Hospital Puerta de Hierro',
+        'note': 'Esperar en recepción y avisar cuando sea el turno. Pago 300 MXN.',
+        'instructions': 'Registrar llegada en recepción y notificar cuando llamen al paciente.',
+        'startDate': _formatDate(today.add(const Duration(days: 3))),
+        'startTime': '12:00',
+        'workHours': 2.0,
+        'waitHours': 1.0,
+        'price': 300.0,
+      },
+      {
+        'title': 'Oficina de gobierno',
+        'location': 'Recaudadora Estatal Guadalajara',
+        'note': 'Apoyo en fila para trámite administrativo. Pago 400 MXN.',
+        'instructions': 'Formarse en ventanilla de trámites y avisar cuando falten 10 personas.',
+        'startDate': _formatDate(today.add(const Duration(days: 4))),
+        'startTime': '09:30',
+        'workHours': 2.5,
+        'waitHours': 1.0,
+        'price': 400.0,
+      },
+      {
+        'title': 'Paquetería',
+        'location': 'Centro de envíos DHL Providencia',
+        'note': 'Esperar turno para recolección o entrega. Pago 180 MXN.',
+        'instructions': 'Esperar turno en mostrador y avisar cuando el número esté por salir.',
+        'startDate': _formatDate(today.add(const Duration(days: 4))),
+        'startTime': '13:30',
+        'workHours': 1.5,
+        'waitHours': 1.0,
+        'price': 180.0,
+      },
+    ];
+
+    for (final task in demoTasks) {
+      final workHours = (task['workHours'] as num).toDouble();
+      final waitHours = (task['waitHours'] as num).toDouble();
+      await _tasks.add({
+        'title': task['title'],
+        'location': task['location'],
+        'note': task['note'],
+        'instructions': task['instructions'],
+        'startDate': task['startDate'],
+        'startTime': task['startTime'],
+        'workHours': workHours,
+        'waitHours': waitHours,
+        'totalHours': workHours + waitHours,
+        'price': task['price'],
+        'status': 'open',
+        'createdAt': FieldValue.serverTimestamp(),
+        'ownerId': ownerId,
+        'ownerEmail': ownerEmail,
+        'ownerRole': 'customer',
+        'runnerId': null,
+        'runnerEmail': null,
+        'accepterId': null,
+        'arrivedAt': null,
+        'progressNote': null,
+        'progressImageUrl': null,
+        'progressUpdatedAt': null,
+        'readyForHandoffAt': null,
+        'completedAt': null,
+        'cancelledAt': null,
+        'whatsappNumber': null,
+        'handoffCode': _generateHandoffCode(),
+        'handoffVerified': false,
+        'ratingFromCustomer': null,
+        'ratingFromRunner': null,
+        'ratedByCustomer': false,
+        'ratedByRunner': false,
+        'isDemo': true,
+      });
+    }
+    return demoTasks.length;
+  }
+
+  Future<int> deleteDemoTasks() async {
+    final snapshot = await _tasks.where('isDemo', isEqualTo: true).get();
+    if (snapshot.docs.isEmpty) return 0;
+    final batch = FirebaseFirestore.instance.batch();
+    for (final doc in snapshot.docs) {
+      batch.delete(doc.reference);
+    }
+    await batch.commit();
+    return snapshot.docs.length;
+  }
+
   Future<void> applyForTask({
     required String taskId,
     required String runnerId,
@@ -691,4 +845,10 @@ class FirestoreTaskService {
       code.replaceAll(RegExp(r'[\s-]'), '').toUpperCase();
 
   String _digitsOnly(String value) => value.replaceAll(RegExp(r'[^0-9]'), '');
+
+  String _formatDate(DateTime value) {
+    final month = value.month.toString().padLeft(2, '0');
+    final day = value.day.toString().padLeft(2, '0');
+    return '${value.year}-$month-$day';
+  }
 }
