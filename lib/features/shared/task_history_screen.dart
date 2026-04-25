@@ -14,7 +14,7 @@ class TaskHistoryScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text(s.t('completedHistoryTitle'))),
       body: StreamBuilder<List<FirestoreTask>>(
-        stream: FirestoreTaskService.instance.streamHistoryExampleTasks(),
+        stream: FirestoreTaskService.instance.streamCompletedTasks(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text(s.t('loadDataRetry')));
@@ -68,7 +68,9 @@ class _HistoryTaskCard extends StatelessWidget {
           children: [
             Text(task.title, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 6),
-            Text('${s.t('status')}: ${s.t('historyCompletedLabel')}'),
+            Text(
+              '${s.t('status')}: ${task.isDemo || task.isHistoryExample ? s.t('historyReferenceCase') : s.t('historyCompletedTask')}',
+            ),
             Text('${s.t('locationLabel')}: ${task.location}'),
             Text('${s.t('onsiteInstructions')}: ${task.note}'),
             if (task.instructions.trim().isNotEmpty)

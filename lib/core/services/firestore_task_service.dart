@@ -32,6 +32,7 @@ class FirestoreTaskService {
     'accepted',
     'arrived',
     'waiting_for_customer',
+    'completed',
   ];
 
   static const List<String> _runnerVisibleApplicationStatuses = [
@@ -169,11 +170,11 @@ class FirestoreTaskService {
     });
   }
 
-  Stream<List<FirestoreTask>> streamHistoryExampleTasks() {
+  Stream<List<FirestoreTask>> streamCompletedTasks() {
     return _tasks.snapshots().map((snapshot) {
       final tasks = snapshot.docs
           .map(FirestoreTask.fromDoc)
-          .where((task) => task.status == 'completed' && task.isHistoryExample)
+          .where((task) => task.status == 'completed')
           .toList(growable: false);
       return _sortTasksByCompletedAtDesc(tasks);
     });
@@ -778,36 +779,51 @@ class FirestoreTaskService {
     required String fromUserId,
     required String toUserId,
     required double rating,
-    required String role,
+    required String fromRole,
+    String? comment,
   }) async {
     if (rating < 1 || rating > 5) throw StateError('invalid_rating');
     if (fromUserId.isEmpty || toUserId.isEmpty) throw StateError('invalid_user');
+    if (fromRole != 'customer' && fromRole != 'runner') {
+      throw StateError('invalid_role');
+    }
     final taskRef = _tasks.doc(taskId);
     final taskSnap = await taskRef.get();
     final task = FirestoreTask.fromDoc(taskSnap);
     if (task.status != 'completed') {
       throw StateError('task_not_completed');
     }
+    await ensureTaskLegacyCompatibility(taskId);
+
+    final fromRoleInTask = fromRole == 'customer' ? task.ownerId : (task.accepterId ?? task.runnerId ?? '');
+    final toRoleInTask = fromRole == 'customer' ? (task.accepterId ?? task.runnerId ?? '') : task.ownerId;
+    if (fromRoleInTask != fromUserId || toRoleInTask != toUserId) {
+      throw StateError('invalid_participant');
+    }
 
     final existed = await _ratings
         .where('taskId', isEqualTo: taskId)
         .where('fromUserId', isEqualTo: fromUserId)
+        .where('fromRole', isEqualTo: fromRole)
         .limit(1)
         .get();
     if (existed.docs.isNotEmpty) {
       throw StateError('already_rated');
     }
 
+    final toRole = fromRole == 'customer' ? 'runner' : 'customer';
     await _ratings.add({
       'taskId': taskId,
       'fromUserId': fromUserId,
       'toUserId': toUserId,
+      'fromRole': fromRole,
+      'toRole': toRole,
       'rating': rating,
-      'role': role,
+      'comment': _hasText(comment) ? comment!.trim() : '',
       'createdAt': Timestamp.now(),
     });
 
-    final isOwnerRating = role == 'owner';
+    final isOwnerRating = fromRole == 'customer';
     await taskRef.update({
       if (isOwnerRating) 'ratingFromCustomer': rating,
       if (isOwnerRating) 'ratedByCustomer': true,
@@ -905,12 +921,11 @@ class FirestoreTaskService {
   List<FirestoreTask> _sortTasksByCompletedAtDesc(List<FirestoreTask> tasks) {
     final copy = [...tasks];
     copy.sort((a, b) {
-      final completedA = a.completedAt;
-      final completedB = b.completedAt;
-      if (completedA == null && completedB == null) return 0;
-      if (completedA == null) return 1;
-      if (completedB == null) return -1;
-      return completedB.compareTo(completedA);
+      final completedA = a.completedAt ?? a.createdAt;
+      final completedB = b.completedAt ?? b.createdAt;
+      final completedCompare = _compareDateDesc(completedA, completedB);
+      if (completedCompare != 0) return completedCompare;
+      return (b.price).compareTo(a.price);
     });
     return copy;
   }

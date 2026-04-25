@@ -792,7 +792,7 @@ class _SubmitRatingButton extends StatelessWidget {
   Widget build(BuildContext context) {
     if (fromUserId.isEmpty || toUserId.isEmpty) return const SizedBox.shrink();
     final s = AppStrings.of(context);
-    final rated = role == 'owner' ? task.ratedByCustomer : task.ratedByRunner;
+    final rated = role == 'customer' ? task.ratedByCustomer : task.ratedByRunner;
     if (rated) return Text(s.t('alreadyRated'));
     return TextButton(
       onPressed: () => showDialog<void>(
@@ -828,7 +828,14 @@ class _RatingDialog extends StatefulWidget {
 
 class _RatingDialogState extends State<_RatingDialog> {
   int _rating = 5;
+  final _commentController = TextEditingController();
   bool _submitting = false;
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
 
   Future<void> _submit() async {
     final s = AppStrings.of(context);
@@ -840,8 +847,9 @@ class _RatingDialogState extends State<_RatingDialog> {
         taskId: widget.taskId,
         fromUserId: widget.fromUserId,
         toUserId: widget.toUserId,
-        role: widget.role,
+        fromRole: widget.role,
         rating: _rating.toDouble(),
+        comment: _commentController.text.trim(),
       );
       if (!mounted) return;
       Navigator.pop(context);
@@ -872,6 +880,12 @@ class _RatingDialogState extends State<_RatingDialog> {
                 .map((value) => DropdownMenuItem(value: value, child: Text('⭐ $value')))
                 .toList(growable: false),
             onChanged: (value) => setState(() => _rating = value ?? 5),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _commentController,
+            maxLines: 3,
+            decoration: InputDecoration(hintText: s.t('ratingCommentHint')),
           ),
         ],
       ),
