@@ -6,6 +6,7 @@ class TaskApplication {
     required this.taskId,
     required this.runnerId,
     required this.runnerName,
+    required this.runnerEmail,
     required this.proposedPriceMxn,
     required this.message,
     required this.status,
@@ -16,6 +17,7 @@ class TaskApplication {
   final String taskId;
   final String runnerId;
   final String runnerName;
+  final String? runnerEmail;
   final double? proposedPriceMxn;
   final String message;
   final String status;
@@ -28,6 +30,7 @@ class TaskApplication {
       taskId: (data['taskId'] ?? '') as String,
       runnerId: (data['runnerId'] ?? '') as String,
       runnerName: (data['runnerName'] ?? '') as String,
+      runnerEmail: data['runnerEmail'] as String?,
       proposedPriceMxn: _toNullableDouble(data['proposedPriceMxn']),
       message: (data['message'] ?? '') as String,
       status: (data['status'] ?? 'pending') as String,

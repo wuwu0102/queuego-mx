@@ -6,7 +6,9 @@ import '../../core/models/firestore_task.dart';
 import '../../core/services/firestore_task_service.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
-  const AdminDashboardScreen({super.key});
+  const AdminDashboardScreen({super.key, required this.onLocaleChanged});
+
+  final ValueChanged<Locale> onLocaleChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +31,26 @@ class AdminDashboardScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             children: [
               Text('${s.t('currentMode')}: ${s.t('modeAdmin')}'),
+              Text(s.t('adminInternalOnly')),
               Text(s.t('roleModeNotice')),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [
+                  ActionChip(
+                    label: const Text('Español MX'),
+                    onPressed: () => onLocaleChanged(const Locale('es', 'MX')),
+                  ),
+                  ActionChip(
+                    label: const Text('English'),
+                    onPressed: () => onLocaleChanged(const Locale('en')),
+                  ),
+                  ActionChip(
+                    label: const Text('繁中'),
+                    onPressed: () => onLocaleChanged(const Locale('zh', 'TW')),
+                  ),
+                ],
+              ),
               const SizedBox(height: 8),
               Text('Tasks total: ${tasks.length}'),
               Text('Completed: $completedCount'),
@@ -42,8 +63,11 @@ class AdminDashboardScreen extends StatelessWidget {
                     subtitle: Text(
                       'Status: ${task.status}\n'
                       'Owner: ${task.ownerId}\n'
+                      'Owner email: ${task.ownerEmail ?? '-'}\n'
+                      'Runner: ${task.runnerId ?? task.accepterId ?? '-'}\n'
                       'Completed at: ${_format(task.completedAt)}\n'
-                      'Cancelled at: ${_format(task.cancelledAt)}',
+                      'Cancelled at: ${_format(task.cancelledAt)}\n'
+                      'Legacy anonymous task: ${_isLegacyAnonymousTask(task) ? s.t('legacyAnonymousTask') : '-'}',
                     ),
                   ),
                 ),
@@ -57,4 +81,7 @@ class AdminDashboardScreen extends StatelessWidget {
 
   String _format(DateTime? value) =>
       value == null ? '-' : DateFormat('yyyy-MM-dd HH:mm').format(value);
+
+  bool _isLegacyAnonymousTask(FirestoreTask task) =>
+      task.ownerId.isEmpty || (task.ownerEmail ?? '').isEmpty;
 }

@@ -48,6 +48,7 @@ class FirestoreTaskService {
     required double waitHours,
     required double price,
     required String ownerId,
+    required String ownerEmail,
   }) async {
     final totalHours = workHours + waitHours;
     await _ensureUserMetrics(ownerId);
@@ -64,6 +65,9 @@ class FirestoreTaskService {
       'status': 'open',
       'createdAt': FieldValue.serverTimestamp(),
       'ownerId': ownerId,
+      'ownerEmail': ownerEmail,
+      'runnerId': null,
+      'runnerEmail': null,
       'accepterId': null,
       'arrivedAt': null,
       'progressNote': null,
@@ -112,7 +116,7 @@ class FirestoreTaskService {
           .map(FirestoreTask.fromDoc)
           .where(
             (task) =>
-                task.accepterId == runnerId &&
+                ((task.runnerId ?? task.accepterId ?? '') == runnerId) &&
                 _runnerActiveStatuses.contains(task.status),
           )
           .toList(growable: false);
@@ -176,6 +180,7 @@ class FirestoreTaskService {
     required String taskId,
     required String runnerId,
     required String runnerName,
+    required String runnerEmail,
     required double? proposedPriceMxn,
     required String message,
   }) async {
@@ -196,6 +201,7 @@ class FirestoreTaskService {
       'taskId': taskId,
       'runnerId': runnerId,
       'runnerName': runnerName,
+      'runnerEmail': runnerEmail,
       'proposedPriceMxn': proposedPriceMxn,
       'message': message,
       'status': 'pending',
@@ -225,6 +231,8 @@ class FirestoreTaskService {
 
       transaction.update(taskRef, {
         'status': 'accepted',
+        'runnerId': application.runnerId,
+        'runnerEmail': application.runnerEmail,
         'accepterId': application.runnerId,
         'price': application.proposedPriceMxn ?? task.price,
       });
@@ -346,8 +354,9 @@ class FirestoreTaskService {
     if (task.ownerId.isNotEmpty) {
       await _incrementCounter(task.ownerId, completedDelta: 1);
     }
-    if ((task.accepterId ?? '').isNotEmpty) {
-      await _incrementCounter(task.accepterId!, completedDelta: 1);
+    final runnerId = task.runnerId ?? task.accepterId ?? '';
+    if (runnerId.isNotEmpty) {
+      await _incrementCounter(runnerId, completedDelta: 1);
     }
   }
 
