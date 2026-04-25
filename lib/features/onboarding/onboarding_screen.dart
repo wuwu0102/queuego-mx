@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../../core/services/auth_gate.dart';
 import '../../core/i18n/app_strings.dart';
 import '../admin/admin_dashboard_screen.dart';
 import '../customer/customer_shell.dart';
@@ -18,31 +19,48 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
+  static const _adminEmail = 'admin@queuego.mx';
+
+  bool get _isAdminOverride => Uri.base.queryParameters['admin'] == 'true';
+
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
+    final user = FirebaseAuth.instance.currentUser;
+    final isLoggedIn = isFormallyLoggedIn(user);
+    final email = user?.email ?? '';
+    final isAdminEmail = isLoggedIn && email == _adminEmail;
+    final showAdmin = isAdminEmail || _isAdminOverride;
     return Scaffold(
       appBar: AppBar(
         title: Text(s.t('appName')),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AuthScreen()),
+          if (isLoggedIn) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+              child: Center(
+                child: Text(
+                  email,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ),
-            child: Text(s.t('loginAction')),
-          ),
-          TextButton(
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-              await FirebaseAuth.instance.signInAnonymously();
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(s.t('logoutDone'))),
-              );
-            },
-            child: Text(s.t('logoutAction')),
-          ),
+            TextButton(
+              onPressed: () async {
+                await FirebaseAuth.instance.signOut();
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(s.t('logoutDone'))),
+                );
+              },
+              child: Text(s.t('logoutAction')),
+            ),
+          ] else
+            TextButton(
+              onPressed: () => showLoginModal(context),
+              child: Text(s.t('loginAction')),
+            ),
           TextButton(
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen())),
             child: Text(s.t('terms')),
@@ -52,14 +70,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          StreamBuilder<User?>(
-            stream: FirebaseAuth.instance.authStateChanges(),
-            builder: (context, snapshot) {
-              final user = snapshot.data;
-              return _AuthStatusCard(user: user);
-            },
-          ),
-          const SizedBox(height: 16),
           Text(
             s.t('sloganMvp'),
             style: Theme.of(context).textTheme.headlineSmall,
@@ -78,6 +88,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 label: const Text('English'),
                 onPressed: () => widget.onLocaleChanged(const Locale('en')),
               ),
+              if (showAdmin)
+                ActionChip(
+                  label: const Text('繁體中文'),
+                  onPressed: () => widget.onLocaleChanged(const Locale('zh', 'TW')),
+                ),
             ],
           ),
           const SizedBox(height: 20),
@@ -103,57 +118,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
           ),
-          _HomeActionCard(
-            icon: Icons.admin_panel_settings_outlined,
-            title: s.t('admin'),
-            subtitle: s.t('adminSubtitle'),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => AdminDashboardScreen(onLocaleChanged: widget.onLocaleChanged),
+          if (showAdmin)
+            _HomeActionCard(
+              icon: Icons.admin_panel_settings_outlined,
+              title: s.t('adminPanelInternal'),
+              subtitle: s.t('adminSubtitle'),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AdminDashboardScreen(onLocaleChanged: widget.onLocaleChanged),
+                ),
               ),
             ),
-          ),
           const SizedBox(height: 8),
           Text(
             s.t('firebaseMockNotice'),
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _AuthStatusCard extends StatelessWidget {
-  const _AuthStatusCard({required this.user});
-
-  final User? user;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = AppStrings.of(context);
-    final uid = user?.uid ?? '';
-    final uidTail = uid.length <= 6 ? uid : uid.substring(uid.length - 6);
-    final isAnonymous = user?.isAnonymous ?? true;
-    final isEmail = !isAnonymous &&
-        (user?.providerData.any((provider) => provider.providerId == 'password') ?? false);
-    final method = isAnonymous ? s.t('authMethodAnonymous') : (isEmail ? s.t('authMethodEmail') : s.t('authMethodUnknown'));
-    final userLine = isAnonymous
-        ? s.t('currentAnonymousUser').replaceAll('{uid}', uidTail)
-        : s.t('currentUserEmail').replaceAll('{email}', user?.email ?? '-');
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(s.t('loginStatusTitle'), style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 6),
-            Text(userLine),
-            Text('${s.t('loginMethod')}: $method'),
-          ],
-        ),
       ),
     );
   }

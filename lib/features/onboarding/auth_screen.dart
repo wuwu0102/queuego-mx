@@ -3,22 +3,25 @@ import 'package:flutter/material.dart';
 
 import '../../core/i18n/app_strings.dart';
 
-class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+class LoginModal extends StatefulWidget {
+  const LoginModal({super.key});
 
   @override
-  State<AuthScreen> createState() => _AuthScreenState();
+  State<LoginModal> createState() => _LoginModalState();
 }
 
-class _AuthScreenState extends State<AuthScreen> {
+class _LoginModalState extends State<LoginModal> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _passwordFocusNode = FocusNode();
   bool _loading = false;
+  bool _showPassword = false;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
   }
 
@@ -28,7 +31,7 @@ class _AuthScreenState extends State<AuthScreen> {
         email: email,
         password: password,
       );
-    });
+    }, successMessage: null);
   }
 
   Future<void> _register() async {
@@ -37,11 +40,12 @@ class _AuthScreenState extends State<AuthScreen> {
         email: email,
         password: password,
       );
-    });
+    }, successMessage: AppStrings.of(context).t('authAccountCreated'));
   }
 
   Future<void> _runAuthAction(
     Future<UserCredential> Function(String email, String password) action,
+    {String? successMessage}
   ) async {
     final s = AppStrings.of(context);
     final email = _emailController.text.trim();
@@ -57,11 +61,22 @@ class _AuthScreenState extends State<AuthScreen> {
     try {
       await action(email, password);
       if (!mounted) return;
-      Navigator.pop(context);
+      if (successMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(successMessage)),
+        );
+      }
+      Navigator.pop(context, true);
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
+      final code = error.code;
+      final message = switch (code) {
+        'wrong-password' || 'invalid-credential' => s.t('authWrongPassword'),
+        'user-not-found' => s.t('authUserNotFound'),
+        _ => s.t('authUnknownError'),
+      };
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${s.t('authErrorPrefix')}: ${error.message ?? error.code}')),
+        SnackBar(content: Text(message)),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -71,39 +86,79 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(s.t('loginTitle'))),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          TextField(
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(labelText: s.t('emailLabel')),
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                s.t('progressiveLoginTitle'),
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 6),
+              Text(s.t('progressiveLoginSubtitle')),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                autofocus: true,
+                enabled: !_loading,
+                onSubmitted: (_) => _passwordFocusNode.requestFocus(),
+                decoration: InputDecoration(labelText: s.t('emailLabel')),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _passwordController,
+                focusNode: _passwordFocusNode,
+                obscureText: !_showPassword,
+                enabled: !_loading,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _loading ? null : _login(),
+                decoration: InputDecoration(
+                  labelText: s.t('passwordLabel'),
+                  suffixIcon: IconButton(
+                    onPressed: _loading ? null : () => setState(() => _showPassword = !_showPassword),
+                    icon: Icon(_showPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _loading ? null : _login,
+                  child: Text(_loading ? s.t('saving') : s.t('loginCta')),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: _loading ? null : _register,
+                  child: Text(s.t('registerCta')),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(child: Text(s.t('continueBrowsing'))),
+            ],
           ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _passwordController,
-            obscureText: true,
-            decoration: InputDecoration(labelText: s.t('passwordLabel')),
-          ),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: _loading ? null : _login,
-            child: Text(s.t('loginCta')),
-          ),
-          const SizedBox(height: 10),
-          OutlinedButton(
-            onPressed: _loading ? null : _register,
-            child: Text(s.t('registerCta')),
-          ),
-          const SizedBox(height: 10),
-          TextButton(
-            onPressed: _loading ? null : () => Navigator.pop(context),
-            child: Text(s.t('continueBrowsing')),
-          ),
-        ],
+        ),
       ),
     );
   }
+}
+
+Future<bool> showLoginModal(BuildContext context) async {
+  final loggedIn = await showDialog<bool>(
+    context: context,
+    barrierDismissible: true,
+    builder: (_) => const LoginModal(),
+  );
+  return loggedIn ?? false;
 }
