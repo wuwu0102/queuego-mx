@@ -38,7 +38,6 @@ class FirestoreTaskService {
     'pending',
     'accepted',
   ];
-  static const double _minimumPriceMxn = 250.0;
   static const Map<String, List<int>> _demoHistoryPriceRangesMxn = {
     'Paquetería DHL': [420, 520],
     'Banco BBVA': [450, 580],
@@ -56,24 +55,15 @@ class FirestoreTaskService {
     required String note,
     required String startDate,
     required String startTime,
-    required double basePrice,
-    required String urgencyLevel,
     required double estimatedHours,
-    required double waitHours,
-    required double price,
+    required double waitingHours,
+    required String priority,
+    required double userInputPrice,
     required String ownerId,
     String? ownerEmail,
   }) async {
-    final normalizedUrgency = _normalizeUrgencyLevel(urgencyLevel);
-    final computedPrice = computeFinalPrice(
-      basePrice: basePrice,
-      estimatedHours: estimatedHours,
-      waitHours: waitHours,
-      urgencyLevel: normalizedUrgency,
-    );
-    final safePrice = math.max(_minimumPriceMxn, price);
-    final finalPrice = math.max(computedPrice, safePrice);
-    final totalHours = estimatedHours + waitHours;
+    final normalizedPriority = _normalizeUrgencyLevel(priority);
+    final totalPrice = userInputPrice;
     await _ensureUserMetrics(ownerId);
     await _tasks.add({
       'title': title,
@@ -81,13 +71,13 @@ class FirestoreTaskService {
       'note': note,
       'startDate': startDate,
       'startTime': startTime,
-      'basePrice': basePrice,
-      'urgencyLevel': normalizedUrgency,
+      'priority': normalizedPriority,
       'estimatedHours': estimatedHours,
+      'waitingHours': waitingHours,
       'workHours': estimatedHours,
-      'waitHours': waitHours,
-      'totalHours': totalHours,
-      'price': finalPrice,
+      'waitHours': waitingHours,
+      'totalHours': estimatedHours + waitingHours,
+      'price': totalPrice,
       'status': 'open',
       'createdAt': FieldValue.serverTimestamp(),
       'ownerId': ownerId,
@@ -774,88 +764,77 @@ class FirestoreTaskService {
     });
   }
 
-  Stream<bool> streamHasRated({
-    required String taskId,
-    required String fromUserId,
-  }) {
-    final ratingId = _ratingDocId(taskId: taskId, fromUserId: fromUserId);
-    return _ratings.doc(ratingId).snapshots().map((doc) => doc.exists);
+  Stream<bool> streamHasRated({required String taskId, required String fromUserId}) {
+    return _ratings
+        .where('taskId', isEqualTo: taskId)
+        .where('fromUserId', isEqualTo: fromUserId)
+        .limit(1)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.isNotEmpty);
   }
 
   Future<void> submitRating({
     required String taskId,
     required String fromUserId,
     required String toUserId,
+    required double rating,
     required String role,
-    required int rating,
-    String? comment,
   }) async {
     if (rating < 1 || rating > 5) throw StateError('invalid_rating');
     if (fromUserId.isEmpty || toUserId.isEmpty) throw StateError('invalid_user');
-
-    await _ensureUserMetrics(fromUserId);
-    await _ensureUserMetrics(toUserId);
-
-    final ratingId = _ratingDocId(taskId: taskId, fromUserId: fromUserId);
     final taskRef = _tasks.doc(taskId);
-    final ratingRef = _ratings.doc(ratingId);
-    final userRef = _users.doc(toUserId);
+    final taskSnap = await taskRef.get();
+    final task = FirestoreTask.fromDoc(taskSnap);
+    if (task.status != 'completed') {
+      throw StateError('task_not_completed');
+    }
 
-    await FirebaseFirestore.instance.runTransaction((transaction) async {
-      final taskSnap = await transaction.get(taskRef);
-      final task = FirestoreTask.fromDoc(taskSnap);
-      if (task.status != 'completed') {
-        throw StateError('task_not_completed');
-      }
+    final existed = await _ratings
+        .where('taskId', isEqualTo: taskId)
+        .where('fromUserId', isEqualTo: fromUserId)
+        .limit(1)
+        .get();
+    if (existed.docs.isNotEmpty) {
+      throw StateError('already_rated');
+    }
 
-      final existed = await transaction.get(ratingRef);
-      if (existed.exists) {
-        throw StateError('already_rated');
-      }
+    await _ratings.add({
+      'taskId': taskId,
+      'fromUserId': fromUserId,
+      'toUserId': toUserId,
+      'rating': rating,
+      'role': role,
+      'createdAt': Timestamp.now(),
+    });
 
-      final userSnap = await transaction.get(userRef);
-      final userData = userSnap.data() ?? <String, dynamic>{};
-      final ratingCount = parseInt(userData['ratingCount']);
-      final ratingAvg = parseDouble(userData['ratingAvg']);
-      final nextCount = ratingCount + 1;
-      final nextAvg = ((ratingAvg * ratingCount) + rating) / nextCount;
-      final completedCount = parseInt(userData['completedCount']);
-      final cancelledCount = parseInt(userData['cancelledCount']);
-      final trustScore = _calcTrustScore(
-        ratingAvg: nextAvg,
-        completedCount: completedCount,
-        cancelledCount: cancelledCount,
-      );
+    final isOwnerRating = role == 'owner';
+    await taskRef.update({
+      if (isOwnerRating) 'ratingFromCustomer': rating,
+      if (isOwnerRating) 'ratedByCustomer': true,
+      if (!isOwnerRating) 'ratingFromRunner': rating,
+      if (!isOwnerRating) 'ratedByRunner': true,
+    });
 
-      final fromRole = role == 'customer' ? 'customer' : 'runner';
-      final toRole = role == 'customer' ? 'runner' : 'customer';
+    await updateUserRating(toUserId);
+  }
 
-      transaction.set(ratingRef, {
-        'taskId': taskId,
-        'fromUserId': fromUserId,
-        'toUserId': toUserId,
-        'fromRole': fromRole,
-        'toRole': toRole,
-        'rating': rating,
-        'comment': comment?.trim(),
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+  Future<void> updateUserRating(String userId) async {
+    final ratings = await FirebaseFirestore.instance
+        .collection('ratings')
+        .where('toUserId', isEqualTo: userId)
+        .get();
 
-      final isCustomerRating = role == 'customer';
-      transaction.update(taskRef, {
-        if (isCustomerRating) 'ratingFromCustomer': rating.toDouble(),
-        if (isCustomerRating) 'ratedByCustomer': true,
-        if (!isCustomerRating) 'ratingFromRunner': rating.toDouble(),
-        if (!isCustomerRating) 'ratedByRunner': true,
-      });
+    double avg = 0;
+    if (ratings.docs.isNotEmpty) {
+      avg = ratings.docs
+              .map((e) => (e['rating'] as num).toDouble())
+              .reduce((a, b) => a + b) /
+          ratings.docs.length;
+    }
 
-      transaction.set(userRef, {
-        'ratingAvg': nextAvg,
-        'ratingCount': nextCount,
-        'completedCount': completedCount,
-        'cancelledCount': cancelledCount,
-        'trustScore': trustScore,
-      }, SetOptions(merge: true));
+    await FirebaseFirestore.instance.collection('users').doc(userId).update({
+      'ratingAvg': avg,
+      'ratingCount': ratings.docs.length,
     });
   }
 
@@ -909,9 +888,6 @@ class FirestoreTaskService {
     final score = (ratingAvg * 20) + (completedCount * 2) - (cancelledCount * 5);
     return score.clamp(0, 100).toDouble();
   }
-
-  String _ratingDocId({required String taskId, required String fromUserId}) =>
-      '${taskId}_$fromUserId';
 
   List<FirestoreTask> _sortTasksByCreatedAtDesc(List<FirestoreTask> tasks) {
     final sorted = List<FirestoreTask>.from(tasks);
@@ -968,31 +944,6 @@ class FirestoreTaskService {
   }
 
   bool _hasText(String? text) => text != null && text.trim().isNotEmpty;
-
-  double computeFinalPrice({
-    required double basePrice,
-    required double estimatedHours,
-    required double waitHours,
-    required String urgencyLevel,
-  }) {
-    final urgencyBonus = switch (_normalizeUrgencyLevel(urgencyLevel)) {
-      'priority' => 150.0,
-      'urgent' => 300.0,
-      _ => 0.0,
-    };
-    final normalizedBasePrice = parseDouble(basePrice);
-    final normalizedEstimatedHours = parseDouble(estimatedHours);
-    final normalizedWaitHours = parseDouble(waitHours);
-    final normalizedUrgencyBonus = parseDouble(urgencyBonus);
-    final finalPrice = math.max(
-      250.0,
-      normalizedBasePrice +
-          (normalizedEstimatedHours * 120.0) +
-          (normalizedWaitHours * 80.0) +
-          normalizedUrgencyBonus,
-    );
-    return finalPrice;
-  }
 
   String _normalizeUrgencyLevel(String value) {
     switch (value) {
