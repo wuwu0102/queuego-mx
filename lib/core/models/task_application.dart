@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../utils/number_parsing.dart';
+
 class TaskApplication {
   const TaskApplication({
     required this.id,
@@ -40,7 +42,8 @@ class TaskApplication {
 
   static double? _toNullableDouble(dynamic value) {
     if (value == null) return null;
-    if (value is num) return value.toDouble();
-    return double.tryParse('$value');
+    if (value is String && value.trim().isEmpty) return null;
+    if (value is String) return double.tryParse(value);
+    return parseDouble(value);
   }
 }

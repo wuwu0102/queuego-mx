@@ -1,3 +1,5 @@
+import '../utils/number_parsing.dart';
+
 class UserMetrics {
   const UserMetrics({
     required this.uid,
@@ -19,11 +21,11 @@ class UserMetrics {
     final raw = data ?? <String, dynamic>{};
     return UserMetrics(
       uid: uid,
-      ratingAvg: (raw['ratingAvg'] as num?)?.toDouble() ?? 0,
-      ratingCount: (raw['ratingCount'] as num?)?.toInt() ?? 0,
-      completedCount: (raw['completedCount'] as num?)?.toInt() ?? 0,
-      cancelledCount: (raw['cancelledCount'] as num?)?.toInt() ?? 0,
-      trustScore: (raw['trustScore'] as num?)?.toDouble() ?? 0,
+      ratingAvg: parseDouble(raw['ratingAvg']),
+      ratingCount: parseInt(raw['ratingCount']),
+      completedCount: parseInt(raw['completedCount']),
+      cancelledCount: parseInt(raw['cancelledCount']),
+      trustScore: parseDouble(raw['trustScore']),
     );
   }
 }

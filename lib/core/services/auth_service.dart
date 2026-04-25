@@ -9,11 +9,11 @@ class AuthService {
       displayName: role == 'customer' ? 'Demo Customer' : 'Demo Runner',
       email: email,
       createdAt: DateTime.now(),
-      ratingAvg: role == 'runner' ? 4.8 : 5,
+      ratingAvg: role == 'runner' ? 4.8 : 5.0,
       ratingCount: role == 'runner' ? 12 : 0,
       completedCount: role == 'runner' ? 42 : 0,
       cancelledCount: 0,
-      trustScore: role == 'runner' ? 96 : 80,
+      trustScore: role == 'runner' ? 96.0 : 80.0,
       isAdmin: false,
     );
   }

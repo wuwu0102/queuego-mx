@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../utils/number_parsing.dart';
+
 class FirestoreTask {
   const FirestoreTask({
     required this.id,
@@ -93,13 +95,13 @@ class FirestoreTask {
       instructions: (data['instructions'] ?? data['note'] ?? '') as String,
       startDate: (data['startDate'] ?? '') as String,
       startTime: (data['startTime'] ?? '') as String,
-      basePrice: _numToDouble(data['basePrice']),
+      basePrice: parseDouble(data['basePrice']),
       urgencyLevel: (data['urgencyLevel'] ?? 'normal') as String,
-      estimatedHours: _numToDouble(data['estimatedHours'] ?? data['workHours']),
-      workHours: _numToDouble(data['workHours'] ?? data['estimatedHours']),
-      waitHours: _numToDouble(data['waitHours']),
-      totalHours: _numToDouble(data['totalHours']),
-      price: _numToDouble(data['price']),
+      estimatedHours: parseDouble(data['estimatedHours'] ?? data['workHours']),
+      workHours: parseDouble(data['workHours'] ?? data['estimatedHours']),
+      waitHours: parseDouble(data['waitHours']),
+      totalHours: parseDouble(data['totalHours']),
+      price: parseDouble(data['price']),
       status: (data['status'] ?? 'open') as String,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       ownerId: (data['ownerId'] ?? '') as String,
@@ -119,8 +121,8 @@ class FirestoreTask {
       whatsappNumber: data['whatsappNumber'] as String?,
       handoffCode: (data['handoffCode'] ?? '') as String,
       handoffVerified: (data['handoffVerified'] ?? false) as bool,
-      ratingFromCustomer: _nullableNumToDouble(data['ratingFromCustomer']),
-      ratingFromRunner: _nullableNumToDouble(data['ratingFromRunner']),
+      ratingFromCustomer: _nullableParsedDouble(data['ratingFromCustomer']),
+      ratingFromRunner: _nullableParsedDouble(data['ratingFromRunner']),
       ratedByCustomer: (data['ratedByCustomer'] ?? false) as bool,
       ratedByRunner: (data['ratedByRunner'] ?? false) as bool,
       isDemo: (data['isDemo'] ?? false) as bool,
@@ -128,14 +130,9 @@ class FirestoreTask {
     );
   }
 
-  static double _numToDouble(dynamic value) {
-    if (value is num) return value.toDouble();
-    return double.tryParse('$value') ?? 0;
-  }
 
-  static double? _nullableNumToDouble(dynamic value) {
+  static double? _nullableParsedDouble(dynamic value) {
     if (value == null) return null;
-    if (value is num) return value.toDouble();
-    return double.tryParse('$value');
+    return parseDouble(value);
   }
 }

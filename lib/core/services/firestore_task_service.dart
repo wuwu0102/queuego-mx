@@ -1,4 +1,4 @@
-import 'dart:math';
+import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -6,6 +6,7 @@ import '../models/firestore_task.dart';
 import '../models/task_application.dart';
 import '../models/task_message.dart';
 import '../models/user_metrics.dart';
+import '../utils/number_parsing.dart';
 
 class FirestoreTaskService {
   FirestoreTaskService._();
@@ -37,7 +38,7 @@ class FirestoreTaskService {
     'pending',
     'accepted',
   ];
-  static const double _minimumPriceMxn = 250;
+  static const double _minimumPriceMxn = 250.0;
 
   Future<void> addTask({
     required String title,
@@ -60,8 +61,8 @@ class FirestoreTaskService {
       waitHours: waitHours,
       urgencyLevel: normalizedUrgency,
     );
-    final safePrice = max(_minimumPriceMxn, price);
-    final finalPrice = max(computedPrice, safePrice);
+    final safePrice = math.max(_minimumPriceMxn, price);
+    final finalPrice = math.max(computedPrice, safePrice);
     final totalHours = estimatedHours + waitHours;
     await _ensureUserMetrics(ownerId);
     await _tasks.add({
@@ -394,10 +395,10 @@ class FirestoreTaskService {
       final task = demoTasks[i];
       final createdAt = createdTimes[i];
       final completedAt = createdAt.add(Duration(minutes: 45 + (i * 17)));
-      final basePrice = (task['basePrice'] as num).toDouble();
+      final basePrice = parseDouble(task['basePrice']);
       final urgencyLevel = (task['urgencyLevel'] as String?) ?? 'normal';
-      final estimatedHours = (task['estimatedHours'] as num).toDouble();
-      final waitHours = (task['waitHours'] as num).toDouble();
+      final estimatedHours = parseDouble(task['estimatedHours']);
+      final waitHours = parseDouble(task['waitHours']);
       final finalPrice = computeFinalPrice(
         basePrice: basePrice,
         estimatedHours: estimatedHours,
@@ -470,9 +471,9 @@ class FirestoreTaskService {
     final batch = FirebaseFirestore.instance.batch();
     for (final doc in snapshot.docs) {
       final task = FirestoreTask.fromDoc(doc);
-      final basePrice = task.basePrice > 0 ? task.basePrice : max(100, task.price - 200);
+      final basePrice = task.basePrice > 0 ? parseDouble(task.basePrice) : parseDouble(math.max(100.0, task.price - 200.0));
       final urgencyLevel = _normalizeUrgencyLevel(task.urgencyLevel);
-      final estimatedHours = task.estimatedHours > 0 ? task.estimatedHours : task.workHours;
+      final estimatedHours = task.estimatedHours > 0 ? parseDouble(task.estimatedHours) : parseDouble(task.workHours);
       final finalPrice = computeFinalPrice(
         basePrice: basePrice,
         estimatedHours: estimatedHours,
@@ -808,12 +809,12 @@ class FirestoreTaskService {
 
       final userSnap = await transaction.get(userRef);
       final userData = userSnap.data() ?? <String, dynamic>{};
-      final ratingCount = (userData['ratingCount'] as num?)?.toInt() ?? 0;
-      final ratingAvg = (userData['ratingAvg'] as num?)?.toDouble() ?? 0;
+      final ratingCount = parseInt(userData['ratingCount']);
+      final ratingAvg = parseDouble(userData['ratingAvg']);
       final nextCount = ratingCount + 1;
       final nextAvg = ((ratingAvg * ratingCount) + rating) / nextCount;
-      final completedCount = (userData['completedCount'] as num?)?.toInt() ?? 0;
-      final cancelledCount = (userData['cancelledCount'] as num?)?.toInt() ?? 0;
+      final completedCount = parseInt(userData['completedCount']);
+      final cancelledCount = parseInt(userData['cancelledCount']);
       final trustScore = _calcTrustScore(
         ratingAvg: nextAvg,
         completedCount: completedCount,
@@ -873,12 +874,12 @@ class FirestoreTaskService {
     await FirebaseFirestore.instance.runTransaction((transaction) async {
       final snap = await transaction.get(ref);
       final data = snap.data() ?? <String, dynamic>{};
-      final ratingAvg = (data['ratingAvg'] as num?)?.toDouble() ?? 0;
-      final ratingCount = (data['ratingCount'] as num?)?.toInt() ?? 0;
-      final completed = (data['completedCount'] as num?)?.toInt() ?? 0;
-      final cancelled = (data['cancelledCount'] as num?)?.toInt() ?? 0;
-      final nextCompleted = max(0, completed + completedDelta);
-      final nextCancelled = max(0, cancelled + cancelledDelta);
+      final ratingAvg = parseDouble(data['ratingAvg']);
+      final ratingCount = parseInt(data['ratingCount']);
+      final completed = parseInt(data['completedCount']);
+      final cancelled = parseInt(data['cancelledCount']);
+      final nextCompleted = math.max(0, completed + completedDelta);
+      final nextCancelled = math.max(0, cancelled + cancelledDelta);
       final trust = _calcTrustScore(
         ratingAvg: ratingAvg,
         completedCount: nextCompleted,
@@ -973,9 +974,18 @@ class FirestoreTaskService {
       'urgent' => 300.0,
       _ => 0.0,
     };
-    final value =
-        basePrice + (estimatedHours * 120) + (waitHours * 80) + urgencyBonus;
-    return max(_minimumPriceMxn, value);
+    final normalizedBasePrice = parseDouble(basePrice);
+    final normalizedEstimatedHours = parseDouble(estimatedHours);
+    final normalizedWaitHours = parseDouble(waitHours);
+    final normalizedUrgencyBonus = parseDouble(urgencyBonus);
+    final finalPrice = math.max(
+      250.0,
+      normalizedBasePrice +
+          (normalizedEstimatedHours * 120.0) +
+          (normalizedWaitHours * 80.0) +
+          normalizedUrgencyBonus,
+    );
+    return finalPrice;
   }
 
   String _normalizeUrgencyLevel(String value) {
