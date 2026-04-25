@@ -8,6 +8,7 @@ import '../../core/services/user_profile_service.dart';
 import '../admin/admin_dashboard_screen.dart';
 import '../customer/customer_shell.dart';
 import '../runner/runner_shell.dart';
+import '../shared/task_history_screen.dart';
 import '../shared/terms_screen.dart';
 import 'auth_screen.dart';
 
@@ -161,6 +162,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               subtitle: s.t('runnerSubtitle'),
               onTap: () => _openRunnerFlow(context),
             ),
+            _HomeActionCard(
+              icon: Icons.history_outlined,
+              title: s.t('completedHistoryTitle'),
+              subtitle: s.t('completedHistorySubtitle'),
+              onTap: () => _openHistoryFlow(context),
+            ),
           ],
         ),
       );
@@ -246,6 +253,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             subtitle: s.t('runnerSubtitle'),
             onTap: () => _openRunnerFlow(context),
           ),
+          _HomeActionCard(
+            icon: Icons.history_outlined,
+            title: s.t('completedHistoryTitle'),
+            subtitle: s.t('completedHistorySubtitle'),
+            onTap: () => _openHistoryFlow(context),
+          ),
           if (showAdmin)
             _HomeActionCard(
               icon: Icons.admin_panel_settings_outlined,
@@ -278,6 +291,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => const RunnerShell(),
+      ),
+    );
+  }
+
+  Future<void> _openHistoryFlow(BuildContext context) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const TaskHistoryScreen(),
       ),
     );
   }
