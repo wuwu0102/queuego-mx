@@ -2,11 +2,28 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class DefaultFirebaseOptions {
+  static const String _placeholderPrefix = 'YOUR_WEB_';
+
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
       return web;
     }
     throw UnsupportedError('This project is configured for Firebase Web in this task.');
+  }
+
+  static bool get hasValidWebConfig {
+    final options = web;
+    return [
+      options.apiKey,
+      options.appId,
+      options.messagingSenderId,
+      options.projectId,
+      options.authDomain,
+      options.storageBucket,
+      options.measurementId,
+    ].every(
+      (value) => value != null && value.isNotEmpty && !value.startsWith(_placeholderPrefix),
+    );
   }
 
   static FirebaseOptions get web => FirebaseOptions(
