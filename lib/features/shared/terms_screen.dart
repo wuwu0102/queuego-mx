@@ -6,56 +6,60 @@ class TermsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Términos')),
+      appBar: AppBar(title: const Text('Términos de uso')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: const [
             Text(
-              'Términos de uso – QueueGo MX',
+              'Términos de uso',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 16),
             _CheckItem(
               text:
-                  'Esta plataforma solo conecta personas para asistencia en filas.',
+                  'QueueGo MX conecta personas que necesitan apoyo en filas, trámites o esperas con personas disponibles para ayudar.',
             ),
             SizedBox(height: 10),
             _CheckItem(
               text:
-                  'No garantizamos resultados con ninguna institución (gobierno, bancos, hospitales, escuelas o empresas privadas).',
+                  'QueueGo MX no representa ni garantiza resultados ante instituciones públicas, privadas, bancos, hospitales, escuelas o empresas.',
             ),
-            SizedBox(height: 10),
-            _CheckItem(text: 'Está prohibido:'),
-            _BulletItem(text: 'Revender turnos'),
-            _BulletItem(text: 'Suplantar identidad'),
-            _BulletItem(text: 'Manipular sistemas de fila'),
-            _BulletItem(text: 'Cualquier actividad ilegal'),
-            SizedBox(height: 10),
-            _CheckItem(text: 'La persona asistente solo proporciona:'),
-            _BulletItem(text: 'Esperar en fila'),
-            _BulletItem(text: 'Actualizaciones en tiempo real'),
-            _BulletItem(text: 'Evidencia básica (foto o mensaje)'),
-            SizedBox(height: 10),
-            _CheckItem(text: 'Si el lugar prohíbe terceros en fila:'),
-            Padding(
-              padding: EdgeInsets.only(left: 28),
-              child: Text('→ la persona asistente debe informar inmediatamente'),
-            ),
-            SizedBox(height: 10),
-            _CheckItem(text: 'El pago y acuerdo son responsabilidad de ambas partes'),
-            SizedBox(height: 10),
-            _CheckItem(text: 'Para mayor seguridad:'),
-            _BulletItem(text: 'Se utilizará un código de verificación'),
-            _BulletItem(text: 'Ambas partes deben confirmar antes de finalizar'),
-            SizedBox(height: 10),
-            _CheckItem(text: 'Después de completar:'),
-            _BulletItem(text: 'Ambas partes pueden calificarse mutuamente'),
             SizedBox(height: 10),
             _CheckItem(
               text:
-                  'La plataforma puede suspender cuentas por comportamiento sospechoso',
+                  'Cada usuario es responsable de revisar si el lugar permite apoyo de terceros en la fila.',
+            ),
+            SizedBox(height: 10),
+            _CheckItem(
+              text:
+                  'Está prohibido suplantar identidad, vender turnos oficiales, manipular sistemas de fila o realizar actividades ilegales.',
+            ),
+            SizedBox(height: 10),
+            _CheckItem(
+              text:
+                  'El runner puede apoyar esperando en fila, enviando actualizaciones, fotos de evidencia y avisos de avance.',
+            ),
+            SizedBox(height: 10),
+            _CheckItem(
+              text:
+                  'El pago, precio final y condiciones del servicio deben ser acordados entre las partes.',
+            ),
+            SizedBox(height: 10),
+            _CheckItem(
+              text:
+                  'Para mayor seguridad, se puede usar un código de verificación al momento de la entrega.',
+            ),
+            SizedBox(height: 10),
+            _CheckItem(
+              text:
+                  'Ambas partes pueden calificarse después de completar una tarea.',
+            ),
+            SizedBox(height: 10),
+            _CheckItem(
+              text:
+                  'QueueGo MX puede revisar, ocultar o cancelar tareas sospechosas o que incumplan estas reglas.',
             ),
           ],
         ),
@@ -77,20 +81,6 @@ class _CheckItem extends StatelessWidget {
         const Text('✔ '),
         Expanded(child: Text(text)),
       ],
-    );
-  }
-}
-
-class _BulletItem extends StatelessWidget {
-  const _BulletItem({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 28, top: 2),
-      child: Text('* $text'),
     );
   }
 }
