@@ -284,7 +284,7 @@ class OwnerTasksPage extends StatelessWidget {
         stream: FirestoreTaskService.instance.streamTasksByOwner(ownerId),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(child: Text('${s.t('loadFailed')}: ${snapshot.error}'));
+            return Center(child: Text(s.t('loadDataRetry')));
           }
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
@@ -383,7 +383,7 @@ class CustomerTaskApplicationsPage extends StatelessWidget {
         stream: FirestoreTaskService.instance.streamApplicationsByTask(task.id),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(child: Text('${s.t('loadFailed')}: ${snapshot.error}'));
+            return Center(child: Text(s.t('loadDataRetry')));
           }
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());

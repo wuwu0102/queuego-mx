@@ -65,7 +65,7 @@ class OpenTasksPage extends StatelessWidget {
         stream: FirestoreTaskService.instance.streamOpenTasks(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(child: Text('${s.t('loadFailed')}: ${snapshot.error}'));
+            return Center(child: Text(s.t('loadDataRetry')));
           }
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
@@ -289,7 +289,7 @@ class RunnerApplicationsPage extends StatelessWidget {
         stream: FirestoreTaskService.instance.streamApplicationsByRunner(runnerId),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(child: Text('${s.t('loadFailed')}: ${snapshot.error}'));
+            return Center(child: Text(s.t('loadDataRetry')));
           }
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
@@ -337,7 +337,7 @@ class RunnerActiveTasksPage extends StatelessWidget {
         stream: FirestoreTaskService.instance.streamRunnerActiveTasks(runnerId),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(child: Text('${s.t('loadFailed')}: ${snapshot.error}'));
+            return Center(child: Text(s.t('loadDataRetry')));
           }
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());

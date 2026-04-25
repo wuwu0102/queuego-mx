@@ -14,6 +14,18 @@ class FirestoreTaskService {
   CollectionReference<Map<String, dynamic>> get _applications =>
       FirebaseFirestore.instance.collection('applications');
 
+  static const List<String> _runnerActiveStatuses = [
+    'accepted',
+    'arrived',
+    'in_progress',
+    'waiting_for_customer',
+  ];
+
+  static const List<String> _runnerVisibleApplicationStatuses = [
+    'pending',
+    'accepted',
+  ];
+
   Future<void> addTask({
     required String title,
     required String location,
@@ -44,33 +56,34 @@ class FirestoreTaskService {
   }
 
   Stream<List<FirestoreTask>> streamOpenTasks() {
-    return _tasks
-        .where('status', isEqualTo: 'open')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map(FirestoreTask.fromDoc).toList());
+    return _tasks.where('status', isEqualTo: 'open').snapshots().map((snapshot) {
+      final tasks = snapshot.docs.map(FirestoreTask.fromDoc).toList(growable: false);
+      return _sortTasksByCreatedAtDesc(tasks);
+    });
   }
 
   Stream<List<FirestoreTask>> streamTasksByOwner(String ownerId) {
-    return _tasks
-        .where('ownerId', isEqualTo: ownerId)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map(FirestoreTask.fromDoc).toList());
+    return _tasks.snapshots().map((snapshot) {
+      final tasks = snapshot.docs
+          .map(FirestoreTask.fromDoc)
+          .where((task) => task.ownerId == ownerId)
+          .toList(growable: false);
+      return _sortTasksByCreatedAtDesc(tasks);
+    });
   }
 
   Stream<List<FirestoreTask>> streamRunnerActiveTasks(String runnerId) {
-    return _tasks
-        .where('accepterId', isEqualTo: runnerId)
-        .where('status', whereIn: const [
-          'accepted',
-          'arrived',
-          'in_progress',
-          'waiting_for_customer',
-        ])
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map(FirestoreTask.fromDoc).toList());
+    return _tasks.snapshots().map((snapshot) {
+      final tasks = snapshot.docs
+          .map(FirestoreTask.fromDoc)
+          .where(
+            (task) =>
+                task.accepterId == runnerId &&
+                _runnerActiveStatuses.contains(task.status),
+          )
+          .toList(growable: false);
+      return _sortTasksByCreatedAtDesc(tasks);
+    });
   }
 
   Stream<int> streamTaskApplicationCount(String taskId) {
@@ -83,19 +96,21 @@ class FirestoreTaskService {
   Stream<List<TaskApplication>> streamApplicationsByTask(String taskId) {
     return _applications
         .where('taskId', isEqualTo: taskId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map(TaskApplication.fromDoc).toList(growable: false));
+        .map((snapshot) {
+      final apps = snapshot.docs.map(TaskApplication.fromDoc).toList(growable: false);
+      return _sortApplicationsByCreatedAtDesc(apps);
+    });
   }
 
   Stream<List<TaskApplication>> streamApplicationsByRunner(String runnerId) {
     return _applications
         .where('runnerId', isEqualTo: runnerId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map(TaskApplication.fromDoc).toList(growable: false));
+        .map((snapshot) {
+      final apps = snapshot.docs.map(TaskApplication.fromDoc).toList(growable: false);
+      return _sortApplicationsByCreatedAtDesc(apps);
+    });
   }
 
   Stream<TaskApplication?> streamRunnerApplicationForTask({
@@ -104,13 +119,18 @@ class FirestoreTaskService {
   }) {
     return _applications
         .where('runnerId', isEqualTo: runnerId)
-        .where('taskId', isEqualTo: taskId)
-        .where('status', whereIn: const ['pending', 'accepted'])
-        .limit(1)
         .snapshots()
         .map((snapshot) {
-      if (snapshot.docs.isEmpty) return null;
-      return TaskApplication.fromDoc(snapshot.docs.first);
+      final matches = snapshot.docs
+          .map(TaskApplication.fromDoc)
+          .where(
+            (app) =>
+                app.taskId == taskId &&
+                _runnerVisibleApplicationStatuses.contains(app.status),
+          )
+          .toList(growable: false);
+      if (matches.isEmpty) return null;
+      return _sortApplicationsByCreatedAtDesc(matches).first;
     });
   }
 
@@ -122,13 +142,13 @@ class FirestoreTaskService {
     required double estimatedArrivalHours,
     required String message,
   }) async {
-    final existed = await _applications
-        .where('taskId', isEqualTo: taskId)
-        .where('runnerId', isEqualTo: runnerId)
-        .where('status', whereIn: const ['pending', 'accepted'])
-        .limit(1)
-        .get();
-    if (existed.docs.isNotEmpty) {
+    final existed = await _applications.where('runnerId', isEqualTo: runnerId).get();
+    final alreadyApplied = existed.docs.map(TaskApplication.fromDoc).any(
+          (app) =>
+              app.taskId == taskId &&
+              _runnerVisibleApplicationStatuses.contains(app.status),
+        );
+    if (alreadyApplied) {
       throw StateError('already_applied');
     }
 
@@ -156,12 +176,11 @@ class FirestoreTaskService {
 
       transaction.update(appRef, {'status': 'accepted'});
 
-      final pendingApps = await _applications
-          .where('taskId', isEqualTo: task.id)
-          .where('status', isEqualTo: 'pending')
-          .get();
+      final relatedApps = await _applications.where('taskId', isEqualTo: task.id).get();
 
-      for (final doc in pendingApps.docs) {
+      for (final doc in relatedApps.docs) {
+        final app = TaskApplication.fromDoc(doc);
+        if (app.status != 'pending') continue;
         if (doc.id == application.id) continue;
         transaction.update(doc.reference, {'status': 'rejected'});
       }
@@ -177,5 +196,26 @@ class FirestoreTaskService {
 
   Future<void> rejectApplication(String applicationId) async {
     await _applications.doc(applicationId).update({'status': 'rejected'});
+  }
+
+  List<FirestoreTask> _sortTasksByCreatedAtDesc(List<FirestoreTask> tasks) {
+    final sorted = List<FirestoreTask>.from(tasks);
+    sorted.sort((a, b) => _compareDateDesc(a.createdAt, b.createdAt));
+    return sorted;
+  }
+
+  List<TaskApplication> _sortApplicationsByCreatedAtDesc(
+    List<TaskApplication> applications,
+  ) {
+    final sorted = List<TaskApplication>.from(applications);
+    sorted.sort((a, b) => _compareDateDesc(a.createdAt, b.createdAt));
+    return sorted;
+  }
+
+  int _compareDateDesc(DateTime? a, DateTime? b) {
+    if (a == null && b == null) return 0;
+    if (a == null) return 1;
+    if (b == null) return -1;
+    return b.compareTo(a);
   }
 }
