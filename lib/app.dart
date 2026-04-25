@@ -10,11 +10,9 @@ class QueueGoApp extends StatefulWidget {
   const QueueGoApp({
     super.key,
     this.startupNotice,
-    this.useMockMode = false,
   });
 
   final String? startupNotice;
-  final bool useMockMode;
 
   @override
   State<QueueGoApp> createState() => _QueueGoAppState();
@@ -57,7 +55,6 @@ class _QueueGoAppState extends State<QueueGoApp> {
       ],
       home: _StartupNoticeWrapper(
         notice: widget.startupNotice,
-        useMockMode: widget.useMockMode,
         child: home,
       ),
     );
@@ -68,12 +65,10 @@ class _StartupNoticeWrapper extends StatelessWidget {
   const _StartupNoticeWrapper({
     required this.child,
     required this.notice,
-    required this.useMockMode,
   });
 
   final Widget child;
   final String? notice;
-  final bool useMockMode;
 
   @override
   Widget build(BuildContext context) {
@@ -88,7 +83,7 @@ class _StartupNoticeWrapper extends StatelessWidget {
               color: Colors.amber.shade100,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Text(
-                useMockMode ? '$notice (mock mode)' : notice!,
+                notice!,
                 style: Theme.of(context).textTheme.bodyMedium,
                 textAlign: TextAlign.center,
               ),
