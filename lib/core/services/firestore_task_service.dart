@@ -310,6 +310,12 @@ class FirestoreTaskService {
     });
   }
 
+  Future<String> generateHandoffCodeForTask(String taskId) async {
+    final code = _generateHandoffCode();
+    await _tasks.doc(taskId).update({'handoffCode': code});
+    return code;
+  }
+
   Stream<List<TaskMessage>> streamTaskMessages(String taskId) {
     return _messages(taskId).snapshots().map((snapshot) {
       final items = snapshot.docs.map(TaskMessage.fromDoc).toList(growable: false);
