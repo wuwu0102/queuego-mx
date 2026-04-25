@@ -31,6 +31,10 @@ class TaskHistoryScreen extends StatelessWidget {
             children: [
               Container(
                 margin: const EdgeInsets.only(bottom: 12),
+                child: Text(s.t('completedHistorySubtitle')),
+              ),
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
