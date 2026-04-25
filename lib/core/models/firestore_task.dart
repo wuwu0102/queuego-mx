@@ -16,6 +16,13 @@ class FirestoreTask {
     required this.createdAt,
     required this.ownerId,
     required this.accepterId,
+    required this.arrivedAt,
+    required this.progressNote,
+    required this.progressUpdatedAt,
+    required this.readyForHandoffAt,
+    required this.completedAt,
+    required this.whatsappNumber,
+    required this.handoffCode,
   });
 
   final String id;
@@ -32,6 +39,13 @@ class FirestoreTask {
   final DateTime? createdAt;
   final String ownerId;
   final String? accepterId;
+  final DateTime? arrivedAt;
+  final String? progressNote;
+  final DateTime? progressUpdatedAt;
+  final DateTime? readyForHandoffAt;
+  final DateTime? completedAt;
+  final String? whatsappNumber;
+  final String? handoffCode;
 
   factory FirestoreTask.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? <String, dynamic>{};
@@ -50,6 +64,13 @@ class FirestoreTask {
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       ownerId: (data['ownerId'] ?? '') as String,
       accepterId: data['accepterId'] as String?,
+      arrivedAt: (data['arrivedAt'] as Timestamp?)?.toDate(),
+      progressNote: data['progressNote'] as String?,
+      progressUpdatedAt: (data['progressUpdatedAt'] as Timestamp?)?.toDate(),
+      readyForHandoffAt: (data['readyForHandoffAt'] as Timestamp?)?.toDate(),
+      completedAt: (data['completedAt'] as Timestamp?)?.toDate(),
+      whatsappNumber: data['whatsappNumber'] as String?,
+      handoffCode: data['handoffCode'] as String?,
     );
   }
 

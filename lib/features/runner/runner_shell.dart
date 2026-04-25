@@ -1,10 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/i18n/app_strings.dart';
 import '../../core/models/firestore_task.dart';
 import '../../core/models/task_application.dart';
+import '../../core/models/task_message.dart';
 import '../../core/services/firestore_task_service.dart';
 
 class RunnerShell extends StatefulWidget {
@@ -368,24 +370,366 @@ class RunnerActiveTasksPage extends StatelessWidget {
             children: [
               const _ModeHeader(),
               const SizedBox(height: 10),
-              ...tasks.map(
-                (task) => Card(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  child: ListTile(
-                    title: Text(task.title),
-                    subtitle: Text(
-                      '${s.t('locationLabel')}: ${task.location}\n'
-                      '${s.t('totalPrice')}: ${task.price} MXN\n'
-                      '${s.t('customerArrivalBufferHours')}: ${task.waitHours}\n'
-                      '${s.t('status')}: ${s.statusLabel(task.status)}',
-                    ),
-                  ),
-                ),
-              ),
+              ...tasks.map((task) => _RunnerActiveTaskCard(task: task, runnerId: runnerId)),
             ],
           );
         },
       ),
+    );
+  }
+}
+
+class _RunnerActiveTaskCard extends StatefulWidget {
+  const _RunnerActiveTaskCard({required this.task, required this.runnerId});
+
+  final FirestoreTask task;
+  final String runnerId;
+
+  @override
+  State<_RunnerActiveTaskCard> createState() => _RunnerActiveTaskCardState();
+}
+
+class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
+  final _progressController = TextEditingController();
+  final _handoffCodeController = TextEditingController();
+  bool _loading = false;
+
+  @override
+  void dispose() {
+    _progressController.dispose();
+    _handoffCodeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _markArrived() async {
+    final s = AppStrings.of(context);
+    setState(() => _loading = true);
+    try {
+      await FirestoreTaskService.instance.markArrived(
+        taskId: widget.task.id,
+        runnerId: widget.runnerId,
+        progressNote: _progressController.text.trim(),
+      );
+      _progressController.clear();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.t('arrivedSaved'))),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _updateProgress() async {
+    final s = AppStrings.of(context);
+    final note = _progressController.text.trim();
+    if (note.isEmpty) return;
+    setState(() => _loading = true);
+    try {
+      await FirestoreTaskService.instance.updateProgress(
+        taskId: widget.task.id,
+        senderId: widget.runnerId,
+        senderRole: 'runner',
+        progressNote: note,
+      );
+      _progressController.clear();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.t('progressSaved'))),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _notifyWaitingForCustomer() async {
+    final s = AppStrings.of(context);
+    setState(() => _loading = true);
+    try {
+      await FirestoreTaskService.instance.notifyWaitingForCustomer(
+        taskId: widget.task.id,
+        runnerId: widget.runnerId,
+        progressNote: _progressController.text.trim(),
+      );
+      _progressController.clear();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.t('runnerNearlyThereSent'))),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _completeByCode() async {
+    final s = AppStrings.of(context);
+    setState(() => _loading = true);
+    try {
+      await FirestoreTaskService.instance.completeTaskByHandoffCode(
+        task: widget.task,
+        handoffCodeInput: _handoffCodeController.text.trim(),
+      );
+      _handoffCodeController.clear();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.t('taskCompleted'))),
+      );
+    } on StateError {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.t('codeMismatch'))),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  bool get _showWhatsAppButton => [
+        'accepted',
+        'arrived',
+        'waiting_for_customer',
+      ].contains(widget.task.status);
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
+    final task = widget.task;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(task.title, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Text('${s.t('locationLabel')}: ${task.location}'),
+            Text('${s.t('totalPrice')}: ${task.price} MXN'),
+            Text('${s.t('customerArrivalBufferHours')}: ${task.waitHours}'),
+            Text('${s.t('status')}: ${s.statusLabel(task.status)}'),
+            if ((task.progressNote ?? '').isNotEmpty)
+              Text('${s.t('latestProgress')}: ${task.progressNote}'),
+            if (task.arrivedAt != null)
+              Text('${s.t('arrivedAt')}: ${_formatTime(task.arrivedAt!)}'),
+            if (task.readyForHandoffAt != null)
+              Text('${s.t('readyForHandoffAt')}: ${_formatTime(task.readyForHandoffAt!)}'),
+            if (task.completedAt != null)
+              Text('${s.t('completedAt')}: ${_formatTime(task.completedAt!)}'),
+            if (task.status != 'completed') ...[
+              const SizedBox(height: 10),
+              TextField(
+                controller: _progressController,
+                minLines: 1,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: s.t('updateProgress'),
+                  hintText: s.t('progressHint'),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (task.status == 'accepted')
+                    FilledButton(
+                      onPressed: _loading ? null : _markArrived,
+                      child: Text(s.t('arriveNow')),
+                    ),
+                  if (task.status == 'accepted' ||
+                      task.status == 'arrived' ||
+                      task.status == 'waiting_for_customer')
+                    OutlinedButton(
+                      onPressed: _loading ? null : _updateProgress,
+                      child: Text(s.t('updateProgress')),
+                    ),
+                  if (task.status == 'arrived')
+                    FilledButton.tonal(
+                      onPressed: _loading ? null : _notifyWaitingForCustomer,
+                      child: Text(s.t('runnerNearlyThere')),
+                    ),
+                ],
+              ),
+            ],
+            if (task.status == 'waiting_for_customer') ...[
+              const SizedBox(height: 10),
+              TextField(
+                controller: _handoffCodeController,
+                decoration: InputDecoration(
+                  labelText: s.t('enterHandoffCode'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              FilledButton(
+                onPressed: _loading ? null : _completeByCode,
+                child: Text(s.t('completeByCode')),
+              ),
+            ],
+            if (task.status == 'completed')
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text(
+                  s.t('taskCompleted'),
+                  style: TextStyle(color: Theme.of(context).colorScheme.primary),
+                ),
+              ),
+            if (_showWhatsAppButton)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: TextButton.icon(
+                  onPressed: () => _showWhatsAppHint(context),
+                  icon: const Icon(Icons.chat_outlined),
+                  label: Text(s.t('requestWhatsappContact')),
+                ),
+              ),
+            if (task.status == 'accepted' ||
+                task.status == 'arrived' ||
+                task.status == 'waiting_for_customer')
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: _TaskMessagesSection(task: task, userId: widget.runnerId, role: 'runner'),
+              ),
+            if (task.status == 'completed')
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: TextButton(
+                  onPressed: () {},
+                  child: Text(s.t('rateCustomer')),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showWhatsAppHint(BuildContext context) {
+    final s = AppStrings.of(context);
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(s.t('requestWhatsappContact')),
+        content: Text(s.t('whatsappFallbackHint')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(s.t('cancel')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatTime(DateTime value) => DateFormat('yyyy-MM-dd HH:mm').format(value);
+}
+
+class _TaskMessagesSection extends StatefulWidget {
+  const _TaskMessagesSection({
+    required this.task,
+    required this.userId,
+    required this.role,
+  });
+
+  final FirestoreTask task;
+  final String userId;
+  final String role;
+
+  @override
+  State<_TaskMessagesSection> createState() => _TaskMessagesSectionState();
+}
+
+class _TaskMessagesSectionState extends State<_TaskMessagesSection> {
+  final _controller = TextEditingController();
+  bool _sending = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    setState(() => _sending = true);
+    try {
+      await FirestoreTaskService.instance.sendTaskMessage(
+        taskId: widget.task.id,
+        senderId: widget.userId,
+        senderRole: widget.role,
+        text: text,
+      );
+      _controller.clear();
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(s.t('taskMessages'), style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 6),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(s.t('platformSafetyReminder')),
+        ),
+        const SizedBox(height: 8),
+        StreamBuilder<List<TaskMessage>>(
+          stream: FirestoreTaskService.instance.streamTaskMessages(widget.task.id),
+          builder: (context, snapshot) {
+            final items = snapshot.data ?? const <TaskMessage>[];
+            return Column(
+              children: [
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 180),
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: items
+                        .map(
+                          (m) => ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(m.text),
+                            subtitle: Text(
+                              '${m.senderRole} • ${m.createdAt == null ? '-' : DateFormat('MM/dd HH:mm').format(m.createdAt!)}',
+                            ),
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        minLines: 1,
+                        maxLines: 2,
+                        decoration: InputDecoration(hintText: s.t('messageInputHint')),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: _sending ? null : _send,
+                      icon: const Icon(Icons.send),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
+      ],
     );
   }
 }
