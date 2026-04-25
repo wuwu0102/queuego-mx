@@ -21,6 +21,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   bool _isSeeding = false;
   bool _isDeleting = false;
   bool _isRegenerating = false;
+  String? _deletingTaskId;
 
   Future<void> _seedDemoTasks(BuildContext context) async {
     if (_isSeeding) return;
@@ -97,6 +98,48 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       );
     } finally {
       if (mounted) setState(() => _isRegenerating = false);
+    }
+  }
+
+  Future<void> _deleteTask(BuildContext context, FirestoreTask task) async {
+    if (_deletingTaskId != null) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (!isAdminUser(user)) return;
+    final s = AppStrings.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        content: Text(s.t('deleteTaskConfirmMessage')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(s.t('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(s.t('deleteTask')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    setState(() => _deletingTaskId = task.id);
+    try {
+      await FirestoreTaskService.instance.deleteTaskById(task.id);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.t('taskDeletedSuccess'))),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.t('taskDeleteFailed'))),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _deletingTaskId = null);
+      }
     }
   }
 
@@ -235,23 +278,41 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               const Divider(),
               ...tasks.map(
-                (task) => Card(
-                  child: ListTile(
-                    title: Text(task.title),
-                    subtitle: Text(
-                      'Status: ${task.status}\n'
-                      'Owner email: ${task.ownerEmail ?? '-'}\n'
-                      'Runner email: ${task.runnerEmail ?? '-'}\n'
-                      'isDemo: ${task.isDemo}\n'
-                      'isHistoryExample: ${task.isHistoryExample}\n'
-                      'Handoff code: ${task.handoffCode.isEmpty ? '-' : task.handoffCode}\n'
-                      'Created at: ${_format(task.createdAt)}\n'
-                      'Completed at: ${_format(task.completedAt)}\n'
-                      'Cancelled at: ${_format(task.cancelledAt)}\n'
-                      'Legacy anonymous task: ${_isLegacyAnonymousTask(task) ? s.t('legacyAnonymousTask') : '-'}',
+                (task) {
+                  final isDeletingTask = _deletingTaskId == task.id;
+                  return Card(
+                    child: ListTile(
+                      title: Text(task.title),
+                      subtitle: Text(
+                        'Task ID: ${task.id}\n'
+                        'Status: ${task.status}\n'
+                        'Owner email: ${task.ownerEmail ?? '-'}\n'
+                        'Runner email: ${task.runnerEmail ?? '-'}\n'
+                        'isDemo: ${task.isDemo}\n'
+                        'isHistoryExample: ${task.isHistoryExample}\n'
+                        'Handoff code: ${task.handoffCode.isEmpty ? '-' : task.handoffCode}\n'
+                        'Created at: ${_format(task.createdAt)}\n'
+                        'Completed at: ${_format(task.completedAt)}\n'
+                        'Cancelled at: ${_format(task.cancelledAt)}\n'
+                        'Legacy anonymous task: ${_isLegacyAnonymousTask(task) ? s.t('legacyAnonymousTask') : '-'}',
+                      ),
+                      trailing: showDemoControls
+                          ? OutlinedButton(
+                              onPressed: isDeletingTask
+                                  ? null
+                                  : () => _deleteTask(context, task),
+                              child: isDeletingTask
+                                  ? const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : Text(s.t('deleteTask')),
+                            )
+                          : null,
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ],
           );
