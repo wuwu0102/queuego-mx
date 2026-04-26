@@ -254,7 +254,7 @@ class AppStrings {
       'loginSuccess': 'Sesión iniciada correctamente',
       'adminLoginSuccess': 'Administrador conectado',
       'homeSafetyNotice':
-          'QueueGo MX conecta personas para apoyo en filas y esperas. No somos una institución oficial y no procesamos pagos.',
+          'QueueGo MX es una plataforma de conexión entre usuarios.',
       'publishSafetyHint':
           'Publica solo tareas permitidas por el lugar. No compartas documentos sensibles, contraseñas ni datos bancarios.',
       'acceptSafetyHint':
@@ -498,7 +498,7 @@ class AppStrings {
       'loginSuccess': 'Logged in successfully',
       'adminLoginSuccess': 'Admin login successful',
       'homeSafetyNotice':
-          'QueueGo MX connects people for line-waiting support. We are not an official institution and do not process payments.',
+          'QueueGo MX is a peer-to-peer connection platform.',
       'publishSafetyHint':
           'Only post tasks allowed by the location. Do not share sensitive documents, passwords, or banking data.',
       'acceptSafetyHint':
@@ -733,7 +733,7 @@ class AppStrings {
       'authUnknownError': '登入失敗，請稍後再試',
       'loginSuccess': 'Logged in successfully',
       'adminLoginSuccess': '管理員登入成功',
-      'homeSafetyNotice': 'QueueGo MX 是排隊協助媒合平台，不代表任何官方機構，也不處理金流。',
+      'homeSafetyNotice': 'QueueGo MX 是使用者彼此媒合的排隊協助平台。',
       'publishSafetyHint': '請只發布場所允許的任務，不要提供敏感文件、密碼或銀行資料。',
       'acceptSafetyHint': '接任務前請確認可合法且安全完成，不要接受違法或可疑任務。',
       'adminSuspiciousKeywords': '可疑關鍵字提醒',

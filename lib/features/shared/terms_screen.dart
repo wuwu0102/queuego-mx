@@ -8,76 +8,192 @@ class TermsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
-    final bullets = _termsBullets(s.locale);
+    final sections = _termsSections(s.locale);
     return Scaffold(
       appBar: AppBar(title: Text(s.t('termsTitle'))),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              s.t('termsTitle'),
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            for (final line in bullets) ...[
-              _CheckItem(text: line),
-              const SizedBox(height: 10),
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            children: [
+              for (final section in sections) ...[
+                _TermsSectionCard(section: section),
+                const SizedBox(height: 18),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 
-  List<String> _termsBullets(Locale locale) {
+  List<_TermsSection> _termsSections(Locale locale) {
     if (locale.languageCode == 'en') {
       return const [
-        'QueueGo MX is a connection platform between people who need support in lines, procedures, or waiting times and people available to provide in-person support.',
-        'QueueGo MX does not represent any public or private institution, bank, hospital, school, company, or authority.',
-        'QueueGo MX does not guarantee results, turns, approvals, preferential attention, or completion of procedures.',
-        'Each user is responsible for verifying whether the location allows a third party to wait in line, accompany, or provide in-person support.',
-        'It is prohibited to impersonate identity, buy or sell official turns when forbidden, skip lines, alter local rules, manipulate appointment systems, perform procedures without valid authorization, or use the platform for illegal, deceptive, or fraudulent activities.',
-        'Runners may only provide permitted support such as waiting in line, holding a place when allowed, sending updates, notifying when the turn is near, sharing progress evidence when possible, and coordinating in-person handoff with the customer.',
-        'Price, payment method, service conditions, and any negotiation are agreed directly between the customer and runner.',
-        'QueueGo MX currently does not process payments, hold money, charge commissions, or act as a financial intermediary.',
-        'For additional safety, both parties may use a verification code during handoff.',
-        'Both parties may rate each other after completing a task.',
-        'QueueGo MX may review, hide, cancel, or remove suspicious, illegal, deceptive tasks, or tasks that violate these rules.',
-        'Using QueueGo MX implies acceptance of these terms.',
+        _TermsSection(
+          title: '1) What QueueGo MX is',
+          paragraphs: [
+            'QueueGo MX is a matching platform connecting people who need help with lines, procedures, or waiting times and people available to provide in-person support.',
+          ],
+        ),
+        _TermsSection(
+          title: '2) We are not an institution',
+          paragraphs: [
+            'QueueGo MX does not represent any public or private institution, bank, hospital, school, company, or authority.',
+          ],
+        ),
+        _TermsSection(
+          title: '3) We do not guarantee results',
+          paragraphs: [
+            'QueueGo MX does not guarantee results, turns, approvals, or preferential attention.',
+          ],
+        ),
+        _TermsSection(
+          title: '4) User responsibility',
+          paragraphs: [
+            'Each user must verify whether the location allows third-party support.',
+          ],
+        ),
+        _TermsSection(
+          title: '5) Prohibited activities',
+          bullets: [
+            'Impersonating identity',
+            'Selling official turns when prohibited',
+            'Skipping lines',
+            'Manipulating appointment systems',
+            'Illegal or fraudulent activities',
+          ],
+        ),
+        _TermsSection(
+          title: '6) What a runner may do',
+          bullets: [
+            'Wait in line',
+            'Hold a place when allowed',
+            'Send updates',
+            'Notify when the turn is near',
+            'Coordinate handoff',
+          ],
+        ),
+        _TermsSection(
+          title: '7) Payments',
+          paragraphs: [
+            'Price and payment are agreed directly between users.',
+            'QueueGo MX does not process payments or retain money.',
+          ],
+        ),
       ];
     }
     return const [
-      'QueueGo MX es una plataforma de conexión entre personas que necesitan apoyo en filas, trámites o esperas y personas disponibles para brindar apoyo presencial.',
-      'QueueGo MX no representa a ninguna institución pública, privada, banco, hospital, escuela, empresa ni autoridad.',
-      'QueueGo MX no garantiza resultados, turnos, aprobaciones, atención preferente ni resolución de trámites.',
-      'Cada usuario es responsable de verificar si el lugar permite que un tercero espere en fila, acompañe o brinde apoyo presencial.',
-      'Está prohibido: suplantar identidad; comprar, vender o transferir turnos oficiales cuando esté prohibido; saltarse filas o alterar reglas del lugar; manipular sistemas de citas, turnos o atención; realizar trámites en nombre de otra persona sin autorización válida; usar la plataforma para actividades ilegales, engañosas o fraudulentas.',
-      'El runner solo puede brindar apoyo permitido, como: esperar en fila; guardar lugar cuando sea permitido; enviar actualizaciones; avisar cuando falte poco para el turno; compartir evidencia del avance cuando sea posible; coordinar la entrega presencial con el customer.',
-      'El precio, forma de pago, condiciones del servicio y cualquier negociación son acordados directamente entre customer y runner.',
-      'QueueGo MX actualmente no procesa pagos, no retiene dinero, no cobra comisiones y no actúa como intermediario financiero.',
-      'Para mayor seguridad, ambas partes pueden usar un código de verificación al momento de la entrega.',
-      'Ambas partes pueden calificarse después de completar una tarea.',
-      'QueueGo MX puede revisar, ocultar, cancelar o eliminar tareas sospechosas, ilegales, engañosas o que incumplan estas reglas.',
-      'Usar QueueGo MX implica aceptar estos términos.',
+      _TermsSection(
+        title: '1️⃣ Qué es QueueGo MX',
+        paragraphs: [
+          'QueueGo MX es una plataforma de conexión entre personas que necesitan apoyo en filas, trámites o esperas y personas disponibles para brindar apoyo presencial.',
+        ],
+      ),
+      _TermsSection(
+        title: '2️⃣ No somos una institución',
+        paragraphs: [
+          'QueueGo MX no representa a ninguna institución pública, privada, banco, hospital, escuela, empresa ni autoridad.',
+        ],
+      ),
+      _TermsSection(
+        title: '3️⃣ No garantizamos resultados',
+        paragraphs: [
+          'QueueGo MX no garantiza resultados, turnos, aprobaciones ni atención preferente.',
+        ],
+      ),
+      _TermsSection(
+        title: '4️⃣ Responsabilidad del usuario',
+        paragraphs: [
+          'Cada usuario debe verificar si el lugar permite apoyo de terceros.',
+        ],
+      ),
+      _TermsSection(
+        title: '5️⃣ Actividades prohibidas',
+        bullets: [
+          'Suplantar identidad',
+          'Vender turnos oficiales cuando esté prohibido',
+          'Saltarse filas',
+          'Manipular sistemas de citas',
+          'Actividades ilegales o fraudulentas',
+        ],
+      ),
+      _TermsSection(
+        title: '6️⃣ Qué puede hacer el runner',
+        bullets: [
+          'Esperar en fila',
+          'Guardar lugar si es permitido',
+          'Enviar actualizaciones',
+          'Avisar cuando falte poco',
+          'Coordinar entrega',
+        ],
+      ),
+      _TermsSection(
+        title: '7️⃣ Pagos',
+        paragraphs: [
+          'El precio y pago se acuerdan entre usuarios.',
+          'QueueGo MX no procesa pagos ni retiene dinero.',
+        ],
+      ),
     ];
   }
 }
 
-class _CheckItem extends StatelessWidget {
-  const _CheckItem({required this.text});
+class _TermsSection {
+  const _TermsSection({
+    required this.title,
+    this.paragraphs = const [],
+    this.bullets = const [],
+  });
 
-  final String text;
+  final String title;
+  final List<String> paragraphs;
+  final List<String> bullets;
+}
+
+class _TermsSectionCard extends StatelessWidget {
+  const _TermsSectionCard({required this.section});
+
+  final _TermsSection section;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('✔ '),
-        Expanded(child: Text(text)),
-      ],
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.22)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            section.title,
+            style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          for (final paragraph in section.paragraphs)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                paragraph,
+                style: const TextStyle(height: 1.7),
+              ),
+            ),
+          for (final bullet in section.bullets)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                '• $bullet',
+                style: const TextStyle(height: 1.7),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
