@@ -7,6 +7,10 @@ double parseDouble(dynamic value, {double fallback = 0.0}) {
   return fallback;
 }
 
+double roundToTen(num value) {
+  return (value / 10).round() * 10.0;
+}
+
 int parseInt(dynamic value, {int fallback = 0}) {
   if (value == null) return fallback;
   if (value is int) return value;

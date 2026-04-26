@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../core/i18n/app_strings.dart';
 import '../../core/models/firestore_task.dart';
 import '../../core/services/firestore_task_service.dart';
+import '../../core/utils/number_parsing.dart';
 
 class TaskHistoryScreen extends StatelessWidget {
   const TaskHistoryScreen({super.key});
@@ -77,7 +78,7 @@ class _HistoryTaskCard extends StatelessWidget {
               Text('${s.t('instructionsLabel')}: ${task.instructions}'),
             const SizedBox(height: 4),
             _UrgencyBadge(level: task.urgencyLevel),
-            Text('${s.t('historyPricePaid')}: ${task.price.toStringAsFixed(0)} MXN'),
+            Text('${s.t('historyPricePaid')}: ${roundToTen(task.price).toStringAsFixed(0)} MXN'),
             Text('${s.t('startDate')}: ${task.startDate} ${task.startTime}'),
             Text('${s.t('historyTaskDuration')}: ${task.estimatedHours.toStringAsFixed(1)} h'),
             Text('${s.t('historyWaitDuration')}: ${task.waitHours.toStringAsFixed(1)} h'),

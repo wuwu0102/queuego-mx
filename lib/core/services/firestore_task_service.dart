@@ -40,14 +40,14 @@ class FirestoreTaskService {
     'accepted',
   ];
   static const Map<String, List<int>> _demoHistoryPriceRangesMxn = {
-    'Paquetería DHL': [420, 520],
-    'Banco BBVA': [450, 580],
-    'Costco Guadalajara': [380, 480],
+    'Paquetería DHL': [300, 400],
+    'Banco BBVA': [350, 500],
+    'Costco Guadalajara': [300, 400],
     'SAT Guadalajara': [700, 900],
-    'IMSS Clínica': [700, 950],
-    'Hospital privado': [700, 1000],
-    'Oficina de gobierno': [750, 1100],
-    'Concierto / Evento': [800, 1300],
+    'IMSS Clínica': [700, 900],
+    'Hospital privado': [700, 900],
+    'Oficina de gobierno': [500, 900],
+    'Concierto / Evento': [900, 1200],
   };
 
   Future<void> addTask({
@@ -64,7 +64,7 @@ class FirestoreTaskService {
     String? ownerEmail,
   }) async {
     final normalizedPriority = _normalizeUrgencyLevel(priority);
-    final totalPrice = userInputPrice;
+    final totalPrice = roundToTen(userInputPrice);
     await _ensureUserMetrics(ownerId);
     await _tasks.add({
       'title': title,
@@ -403,11 +403,11 @@ class FirestoreTaskService {
         random: random,
         usedPrices: usedPrices,
       );
-      final basePrice = parseDouble(seededPrice);
+      final basePrice = roundToTen(seededPrice);
       final urgencyLevel = (task['urgencyLevel'] as String?) ?? 'normal';
       final estimatedHours = parseDouble(task['estimatedHours']);
       final waitHours = parseDouble(task['waitHours']);
-      final finalPrice = parseDouble(seededPrice);
+      final finalPrice = roundToTen(seededPrice);
       await _tasks.add({
         'title': task['title'],
         'location': task['location'],
@@ -483,7 +483,7 @@ class FirestoreTaskService {
         fallbackPrice: task.price,
       );
       batch.set(doc.reference, {
-        'price': parseDouble(regeneratedPrice),
+        'price': roundToTen(regeneratedPrice),
       }, SetOptions(merge: true));
     }
     await batch.commit();
@@ -561,14 +561,15 @@ class FirestoreTaskService {
     }
 
     final docRef = _applications.doc();
+    final normalizedOffer = proposedPriceMxn == null ? null : roundToTen(proposedPriceMxn);
     await docRef.set({
       'id': docRef.id,
       'taskId': taskId,
       'runnerId': runnerId,
       'runnerName': runnerName,
       'runnerEmail': runnerEmail,
-      'proposedPriceMxn': proposedPriceMxn,
-      'runnerOffer': proposedPriceMxn,
+      'proposedPriceMxn': normalizedOffer,
+      'runnerOffer': normalizedOffer,
       'message': message,
       'runnerMessage': message,
       'status': 'pending',
@@ -603,7 +604,7 @@ class FirestoreTaskService {
         'runnerEmail': application.runnerEmail,
         'accepterId': application.runnerId,
         'acceptedAt': FieldValue.serverTimestamp(),
-        'price': application.proposedPriceMxn ?? task.price,
+        'price': roundToTen(application.proposedPriceMxn ?? task.price),
       });
     });
   }
@@ -1004,10 +1005,10 @@ class FirestoreTaskService {
   }) {
     final range = _demoHistoryPriceRangesMxn[title];
     if (range == null) {
-      var fallback = parseDouble(fallbackPrice).round();
+      var fallback = roundToTen(parseDouble(fallbackPrice)).round();
       if (fallback <= 0) fallback = 420;
       while (usedPrices.contains(fallback)) {
-        fallback += 1;
+        fallback += 10;
       }
       usedPrices.add(fallback);
       return fallback;
@@ -1015,14 +1016,14 @@ class FirestoreTaskService {
 
     final min = range[0];
     final max = range[1];
-    var price = min + random.nextInt((max - min) + 1);
+    var price = roundToTen(min + random.nextInt((max - min) + 1)).toInt();
     var retries = 0;
     while (usedPrices.contains(price) && retries < 20) {
-      price = min + random.nextInt((max - min) + 1);
+      price = roundToTen(min + random.nextInt((max - min) + 1)).toInt();
       retries += 1;
     }
     while (usedPrices.contains(price)) {
-      price += 1;
+      price += 10;
       if (price > max) {
         price = min;
       }

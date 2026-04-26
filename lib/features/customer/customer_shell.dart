@@ -10,6 +10,7 @@ import '../../core/models/task_message.dart';
 import '../../core/models/user_metrics.dart';
 import '../../core/services/firestore_task_service.dart';
 import '../../core/services/auth_gate.dart';
+import '../../core/utils/number_parsing.dart';
 
 class CustomerShell extends StatefulWidget {
   const CustomerShell({super.key});
@@ -110,6 +111,17 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   double get _waitHours => double.tryParse(_waitHoursController.text.trim()) ?? 0;
   double get _totalHours => _workHours + _waitHours;
 
+  void _normalizeEnteredPrice() {
+    final raw = double.tryParse(_priceController.text.trim());
+    if (raw == null) return;
+    final rounded = roundToTen(raw).toStringAsFixed(0);
+    if (_priceController.text.trim() == rounded) return;
+    _priceController.value = TextEditingValue(
+      text: rounded,
+      selection: TextSelection.collapsed(offset: rounded.length),
+    );
+  }
+
   Future<void> _pickDate() async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -145,7 +157,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     final ownerId = user?.uid ?? '';
     final ownerEmail = user?.email ?? '';
     if (ownerId.isEmpty) return;
-    final userInputPrice = double.tryParse(_priceController.text.trim()) ?? 0;
+    final userInputPrice = roundToTen(double.tryParse(_priceController.text.trim()) ?? 0);
 
     setState(() => _submitting = true);
     try {
@@ -286,6 +298,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 _NumberField(
                   controller: _priceController,
                   label: s.t('totalPriceMxnInput'),
+                  onChanged: (_) => _normalizeEnteredPrice(),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  s.t('priceAutoRoundedHint'),
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
@@ -387,7 +405,7 @@ class _TaskCard extends StatelessWidget {
           children: [
             Text('${s.t('locationLabel')}: ${task.location}'),
             Text('${s.t('startDate')}: ${task.startDate} ${task.startTime}'),
-            Text('${s.t('totalPrice')}: ${task.price} MXN'),
+            Text('${s.t('totalPrice')}: ${roundToTen(task.price).toStringAsFixed(0)} MXN'),
             Text('${s.t('status')}: ${s.statusLabel(task.status)}'),
             if ((task.accepterId ?? '').isNotEmpty)
               _TrustScorePanel(userId: task.accepterId!),
@@ -627,7 +645,7 @@ class CustomerTaskApplicationsPage extends StatelessWidget {
                           Text(
                             app.proposedPriceMxn == null
                                 ? '${s.t('myOfferMxn')}: ${s.t('acceptOriginalPrice')}'
-                                : '${s.t('myOfferMxn')}: ${app.proposedPriceMxn} MXN',
+                                : '${s.t('myOfferMxn')}: ${roundToTen(app.proposedPriceMxn!).toStringAsFixed(0)} MXN',
                           ),
                           Text('${s.t('messageToCustomer')}: ${app.message}'),
                           Text('${s.t('status')}: ${s.statusLabel(app.status)}'),

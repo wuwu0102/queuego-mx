@@ -8,9 +8,10 @@ import '../../core/models/firestore_task.dart';
 import '../../core/models/task_application.dart';
 import '../../core/models/task_message.dart';
 import '../../core/models/user_metrics.dart';
-import '../../core/services/firestore_task_service.dart';
 import '../../core/services/auth_gate.dart';
+import '../../core/services/firestore_task_service.dart';
 import '../../core/services/user_profile_service.dart';
+import '../../core/utils/number_parsing.dart';
 
 class RunnerShell extends StatefulWidget {
   const RunnerShell({super.key});
@@ -131,7 +132,7 @@ class _OpenTaskCard extends StatelessWidget {
             Text('${s.t('locationLabel')}: ${task.location}'),
             Text('${s.t('onsiteInstructions')}: ${task.note}'),
             Text('${s.t('startDate')}: ${task.startDate} ${task.startTime}'),
-            Text('${s.t('totalPrice')}: ${task.price} MXN'),
+            Text('${s.t('totalPrice')}: ${roundToTen(task.price).toStringAsFixed(0)} MXN'),
             const SizedBox(height: 8),
             StreamBuilder<TaskApplication?>(
               stream: FirestoreTaskService.instance.streamRunnerApplicationForTask(
@@ -212,12 +213,13 @@ class _ApplyTaskDialogState extends State<ApplyTaskDialog> {
       final emailPrefix = email.contains('@') ? email.split('@').first : '';
       final fallbackName = emailPrefix.isNotEmpty ? emailPrefix : 'Runner';
       final profileName = profile?.displayName.trim() ?? '';
+      final rawOffer = _toNullableDouble(_offerController.text.trim());
       await FirestoreTaskService.instance.applyForTask(
         taskId: widget.task.id,
         runnerId: widget.runnerId,
         runnerName: profileName.isNotEmpty ? profileName : fallbackName,
         runnerEmail: email,
-        proposedPriceMxn: _toNullableDouble(_offerController.text.trim()),
+        proposedPriceMxn: rawOffer == null ? null : roundToTen(rawOffer),
         message: _messageController.text.trim(),
       );
 
@@ -339,7 +341,7 @@ class RunnerApplicationsPage extends StatelessWidget {
                     title: Text('${s.t('taskId')}: ${app.taskId}'),
                     subtitle: Text(
                       '${s.t('myOfferMxn')}: '
-                      '${app.proposedPriceMxn == null ? s.t('acceptOriginalPrice') : '${app.proposedPriceMxn} MXN'}\n'
+                      '${app.proposedPriceMxn == null ? s.t('acceptOriginalPrice') : '${roundToTen(app.proposedPriceMxn!).toStringAsFixed(0)} MXN'}\n'
                       '${s.t('messageToCustomer')}: ${app.message}\n'
                       '${s.t('status')}: ${s.statusLabel(app.status)}',
                     ),
@@ -532,7 +534,7 @@ class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
             Text(task.title, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Text('${s.t('locationLabel')}: ${task.location}'),
-            Text('${s.t('totalPrice')}: ${task.price} MXN'),
+            Text('${s.t('totalPrice')}: ${roundToTen(task.price).toStringAsFixed(0)} MXN'),
             Text('${s.t('customerArrivalBufferHours')}: ${task.waitHours}'),
             Text('${s.t('status')}: ${s.statusLabel(task.status)}'),
             _TrustScorePanel(userId: task.ownerId),
