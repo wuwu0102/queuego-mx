@@ -37,8 +37,8 @@ Future<bool> ensureRoleAllowed(
   final profile = await UserProfileService.instance.fetchProfile(uid);
   final role = profile?.role ?? 'both';
   final allowed = forPosting
-      ? (role == 'customer' || role == 'both')
-      : (role == 'runner' || role == 'both');
+      ? (role == 'customer' || role == 'both' || role == 'user')
+      : (role == 'runner' || role == 'both' || role == 'user');
   if (allowed) return true;
   if (!context.mounted) return false;
   final message = forPosting

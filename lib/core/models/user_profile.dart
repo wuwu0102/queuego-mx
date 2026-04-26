@@ -29,8 +29,8 @@ class UserProfile {
   final double trustScore;
   final bool isAdmin;
 
-  bool get canPostTasks => role == 'customer' || role == 'both';
-  bool get canTakeTasks => role == 'runner' || role == 'both';
+  bool get canPostTasks => role == 'customer' || role == 'both' || role == 'user' || role == 'admin';
+  bool get canTakeTasks => role == 'runner' || role == 'both' || role == 'user' || role == 'admin';
 
   factory UserProfile.fromDoc(String uid, Map<String, dynamic>? data) {
     final raw = data ?? <String, dynamic>{};
