@@ -305,6 +305,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   s.t('priceAutoRoundedHint'),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
+                const SizedBox(height: 10),
+                Text(
+                  s.t('publishSafetyHint'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,

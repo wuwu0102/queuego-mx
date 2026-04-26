@@ -34,6 +34,9 @@ class AppStrings {
       'adminSubtitle': 'Panel de administración',
       'adminPanelInternal': 'Admin Console',
       'terms': 'Términos',
+      'termsTitle': 'Términos de uso',
+      'privacy': 'Aviso de privacidad',
+      'privacyTitle': 'Aviso de privacidad',
       'createTask': 'Crear',
       'myTasks': 'Mis tareas',
       'publishTask': 'Publicar tarea',
@@ -171,11 +174,11 @@ class AppStrings {
       'customerWaitHoursNotice': 'Tu tiempo de llegada registrado: {hours} horas',
       'taskMessages': 'Mensajes de la tarea',
       'platformSafetyReminder':
-          'Para proteger a ambas partes, comunícate dentro de la plataforma. No compartas datos personales ni cierres tratos fuera de la plataforma.',
+          'Para proteger a ambas partes, mantén los acuerdos principales dentro de la plataforma. No compartas información sensible ni realices pagos por adelantado si no confías en la otra parte.',
       'messageInputHint': 'Escribe un mensaje necesario',
       'requestWhatsappContact': 'Solicitar contacto por WhatsApp',
       'whatsappFallbackHint':
-          'Recomendamos usar primero los mensajes de la plataforma. Si ambas partes están de acuerdo, pueden intercambiar WhatsApp.',
+          'Para proteger a ambas partes, mantén los acuerdos principales dentro de la plataforma. No compartas información sensible ni realices pagos por adelantado si no confías en la otra parte.',
       'platformHandoffNotice': 'Completa la entrega dentro de la plataforma para evitar acuerdos fuera de plataforma.',
       'checkInPhoto': 'Foto de llegada',
       'latestProgress': 'Último avance',
@@ -250,6 +253,13 @@ class AppStrings {
       'authUnknownError': 'No se pudo iniciar sesión',
       'loginSuccess': 'Sesión iniciada correctamente',
       'adminLoginSuccess': 'Administrador conectado',
+      'homeSafetyNotice':
+          'QueueGo MX conecta personas para apoyo en filas y esperas. No somos una institución oficial y no procesamos pagos.',
+      'publishSafetyHint':
+          'Publica solo tareas permitidas por el lugar. No compartas documentos sensibles, contraseñas ni datos bancarios.',
+      'acceptSafetyHint':
+          'Antes de aceptar, confirma que puedes cumplir la tarea de forma permitida y segura. No aceptes tareas ilegales o sospechosas.',
+      'adminSuspiciousKeywords': 'Indicadores de riesgo detectados',
     },
     'en': {
       'firebaseMockNotice': 'Tasks are managed securely on the platform.',
@@ -268,6 +278,9 @@ class AppStrings {
       'adminSubtitle': 'Administration panel',
       'adminPanelInternal': 'Admin Console',
       'terms': 'Terms',
+      'termsTitle': 'Terms of use',
+      'privacy': 'Privacy',
+      'privacyTitle': 'Privacy',
       'createTask': 'Create',
       'myTasks': 'My Tasks',
       'publishTask': 'Publish Task',
@@ -484,6 +497,13 @@ class AppStrings {
       'authUnknownError': 'Could not sign in',
       'loginSuccess': 'Logged in successfully',
       'adminLoginSuccess': 'Admin login successful',
+      'homeSafetyNotice':
+          'QueueGo MX connects people for line-waiting support. We are not an official institution and do not process payments.',
+      'publishSafetyHint':
+          'Only post tasks allowed by the location. Do not share sensitive documents, passwords, or banking data.',
+      'acceptSafetyHint':
+          'Before accepting, confirm you can complete the task safely and legally. Do not accept illegal or suspicious tasks.',
+      'adminSuspiciousKeywords': 'Suspicious risk indicators',
     },
     'zh-TW': {
       'firebaseMockNotice': '任務會安全儲存在平台中。',
@@ -501,6 +521,9 @@ class AppStrings {
       'adminSubtitle': '管理面板',
       'adminPanelInternal': 'Admin Console',
       'terms': '服務條款',
+      'termsTitle': '服務條款',
+      'privacy': '隱私權聲明',
+      'privacyTitle': '隱私權聲明',
       'createTask': '發任務',
       'myTasks': '我的任務',
       'publishTask': '發布任務',
@@ -710,6 +733,10 @@ class AppStrings {
       'authUnknownError': '登入失敗，請稍後再試',
       'loginSuccess': 'Logged in successfully',
       'adminLoginSuccess': '管理員登入成功',
+      'homeSafetyNotice': 'QueueGo MX 是排隊協助媒合平台，不代表任何官方機構，也不處理金流。',
+      'publishSafetyHint': '請只發布場所允許的任務，不要提供敏感文件、密碼或銀行資料。',
+      'acceptSafetyHint': '接任務前請確認可合法且安全完成，不要接受違法或可疑任務。',
+      'adminSuspiciousKeywords': '可疑關鍵字提醒',
     },
   };
 

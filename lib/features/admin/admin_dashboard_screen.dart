@@ -7,6 +7,8 @@ import '../../core/models/firestore_task.dart';
 import '../../core/models/user_metrics.dart';
 import '../../core/services/auth_gate.dart';
 import '../../core/services/firestore_task_service.dart';
+import '../shared/privacy_screen.dart';
+import '../shared/terms_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key, required this.onLocaleChanged});
@@ -18,6 +20,17 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  static const List<String> _suspiciousKeywords = [
+    'pasaporte',
+    'ine',
+    'contraseña',
+    'tarjeta',
+    'banco clave',
+    'vender turno',
+    'cita oficial',
+    'documento original',
+  ];
+
   bool _isSeeding = false;
   bool _isDeleting = false;
   bool _isRegenerating = false;
@@ -179,6 +192,27 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const TermsScreen()),
+                    ),
+                    child: Text(s.t('terms')),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const PrivacyScreen()),
+                    ),
+                    child: Text(s.t('privacy')),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
                 children: [
                   ActionChip(
                     label: const Text('Español MX'),
@@ -294,7 +328,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         'Created at: ${_format(task.createdAt)}\n'
                         'Completed at: ${_format(task.completedAt)}\n'
                         'Cancelled at: ${_format(task.cancelledAt)}\n'
-                        'Legacy anonymous task: ${_isLegacyAnonymousTask(task) ? s.t('legacyAnonymousTask') : '-'}',
+                        'Legacy anonymous task: ${_isLegacyAnonymousTask(task) ? s.t('legacyAnonymousTask') : '-'}'
+                        '${_suspiciousKeywordsText(task, s)}',
                       ),
                       trailing: showDemoControls
                           ? OutlinedButton(
@@ -326,4 +361,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   bool _isLegacyAnonymousTask(FirestoreTask task) =>
       task.ownerId.isEmpty || (task.ownerEmail ?? '').isEmpty;
+
+  String _suspiciousKeywordsText(FirestoreTask task, AppStrings s) {
+    final haystack = '${task.title} ${task.note} ${task.location}'.toLowerCase();
+    final hits = _suspiciousKeywords.where(haystack.contains).toList(growable: false);
+    if (hits.isEmpty) return '';
+    return '\n${s.t('adminSuspiciousKeywords')}: ${hits.join(', ')}';
+  }
 }
