@@ -21,29 +21,44 @@ class UserProfileService {
     final ref = _users.doc(user.uid);
     final existing = await ref.get();
     final data = existing.data() ?? <String, dynamic>{};
+    final provider = _providerLabel(user);
     final defaults = <String, dynamic>{
       'uid': user.uid,
       'email': email,
       'displayName': _defaultDisplayName(user.displayName, email),
-      'createdAt': FieldValue.serverTimestamp(),
-      'ratingAvg': 5.0,
-      'ratingCount': 0,
-      'completedCount': 0,
-      'cancelledCount': 0,
-      'trustScore': 80.0,
-      'role': 'both',
-      'isAdmin': false,
+      'photoURL': user.photoURL,
+      'updatedAt': FieldValue.serverTimestamp(),
     };
+    if (!existing.exists) {
+      defaults.addAll(<String, dynamic>{
+        'createdAt': FieldValue.serverTimestamp(),
+        'ratingAvg': 0,
+        'ratingCount': 0,
+        'completedCount': 0,
+        'cancelledCount': 0,
+        'trustScore': 0,
+        'provider': provider,
+        'role': isAdmin ? 'admin' : 'user',
+        'isAdmin': isAdmin,
+      });
+    }
     final updates = <String, dynamic>{};
     for (final entry in defaults.entries) {
       if (!data.containsKey(entry.key) || data[entry.key] == null) {
         updates[entry.key] = entry.value;
       }
     }
+    if (!data.containsKey('provider') || data['provider'] == null) {
+      updates['provider'] = provider;
+    }
     final existingAdmin = data['isAdmin'] == true;
     if (!data.containsKey('isAdmin') || (isAdmin && !existingAdmin)) {
       updates['isAdmin'] = isAdmin;
     }
+    if (isAdmin && data['role'] != 'admin') {
+      updates['role'] = 'admin';
+    }
+    updates['updatedAt'] = FieldValue.serverTimestamp();
     if (updates.isEmpty) return false;
     await ref.set(updates, SetOptions(merge: true));
     return !existing.exists;
@@ -66,7 +81,17 @@ class UserProfileService {
 
   Future<void> updateRole({required String uid, required String role}) async {
     if (uid.isEmpty) return;
-    await _users.doc(uid).set({'role': role}, SetOptions(merge: true));
+    await _users.doc(uid).set({
+      'role': role,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  String _providerLabel(User user) {
+    final ids = user.providerData.map((p) => p.providerId).toSet();
+    if (ids.contains('google.com')) return 'google';
+    if (ids.contains('password')) return 'password';
+    return 'password';
   }
   String _defaultDisplayName(String? displayName, String email) {
     final candidate = displayName?.trim() ?? '';

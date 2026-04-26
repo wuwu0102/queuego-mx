@@ -1,9 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/i18n/app_strings.dart';
 import '../../core/services/auth_gate.dart';
 import '../../core/services/firestore_task_service.dart';
+import '../../core/services/user_profile_service.dart';
 
 class LoginModal extends StatefulWidget {
   const LoginModal({super.key});
@@ -40,6 +42,65 @@ class _LoginModalState extends State<LoginModal> {
       (email, password) => _registerProgressively(email: email, password: password),
       successMessage: AppStrings.of(context).t('authAccountCreated'),
     );
+  }
+
+  Future<void> _loginWithGoogle() async {
+    final s = AppStrings.of(context);
+    final auth = FirebaseAuth.instance;
+    final current = auth.currentUser;
+    final wasAnonymous = current?.isAnonymous ?? false;
+    final previousUid = wasAnonymous ? (current?.uid ?? '') : '';
+    setState(() => _loading = true);
+    try {
+      final provider = GoogleAuthProvider();
+      late final UserCredential credential;
+      if (kIsWeb) {
+        try {
+          credential = await auth.signInWithPopup(provider);
+        } on FirebaseAuthException catch (error) {
+          if (_shouldFallbackToRedirect(error)) {
+            await auth.signInWithRedirect(provider);
+            return;
+          }
+          rethrow;
+        }
+      } else {
+        credential = await auth.signInWithProvider(provider);
+      }
+
+      final user = credential.user;
+      await _migrateAnonymousDataIfNeeded(
+        previousAnonymousUid: previousUid,
+        currentUser: user,
+      );
+      await UserProfileService.instance.ensureProfile(user);
+      if (!mounted) return;
+      final loginMessage = isAdminUser(user)
+          ? '管理員登入成功 / Admin login successful / Administrador conectado'
+          : s.t('loginSuccess');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(loginMessage)),
+      );
+      Navigator.pop(context, true);
+    } on FirebaseAuthException catch (error) {
+      if (!mounted) return;
+      final code = error.code;
+      final message = switch (code) {
+        'popup-closed-by-user' => s.t('authUnknownError'),
+        _ => s.t('authUnknownError'),
+      };
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  bool _shouldFallbackToRedirect(FirebaseAuthException error) {
+    return error.code == 'operation-not-supported-in-this-environment' ||
+        error.code == 'popup-blocked' ||
+        error.code == 'web-storage-unsupported';
   }
 
   Future<UserCredential> _signInProgressively({
@@ -208,6 +269,15 @@ class _LoginModalState extends State<LoginModal> {
                 ),
               ),
               const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _loading ? null : _loginWithGoogle,
+                  icon: const Icon(Icons.login),
+                  label: Text(s.t('continueWithGoogle')),
+                ),
+              ),
+              const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
