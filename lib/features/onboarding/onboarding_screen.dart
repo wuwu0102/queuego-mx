@@ -8,6 +8,7 @@ import '../../core/services/user_profile_service.dart';
 import '../admin/admin_dashboard_screen.dart';
 import '../customer/customer_shell.dart';
 import '../runner/runner_shell.dart';
+import '../shared/privacy_screen.dart';
 import '../shared/task_history_screen.dart';
 import '../shared/terms_screen.dart';
 import 'auth_screen.dart';
@@ -124,6 +125,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
               child: Text(s.t('terms')),
             ),
+            TextButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PrivacyScreen()),
+              ),
+              child: Text(s.t('privacy')),
+            ),
           ],
         ),
         body: ListView(
@@ -170,6 +178,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               subtitle: s.t('completedHistorySubtitle'),
               onTap: () => _openHistoryFlow(context),
             ),
+            const SizedBox(height: 12),
+            Text(
+              s.t('homeSafetyNotice'),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ],
         ),
       );
@@ -211,6 +224,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           TextButton(
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen())),
             child: Text(s.t('terms')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyScreen())),
+            child: Text(s.t('privacy')),
           ),
         ],
       ),
@@ -262,6 +279,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             title: s.t('completedHistoryTitle'),
             subtitle: s.t('completedHistorySubtitle'),
             onTap: () => _openHistoryFlow(context),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            s.t('homeSafetyNotice'),
+            style: Theme.of(context).textTheme.bodySmall,
           ),
           if (showAdmin)
             _HomeActionCard(

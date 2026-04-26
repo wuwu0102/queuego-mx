@@ -147,23 +147,33 @@ class _OpenTaskCard extends StatelessWidget {
                     style: TextStyle(color: Theme.of(context).colorScheme.primary),
                   );
                 }
-                return Align(
-                  alignment: Alignment.centerRight,
-                  child: FilledButton.icon(
-                    onPressed: () async {
-                      final canContinue = await ensureRoleAllowed(context, forPosting: false);
-                      if (!canContinue || !context.mounted) return;
-                      final user = FirebaseAuth.instance.currentUser;
-                      final userId = user?.uid ?? '';
-                      if (userId.isEmpty) return;
-                      showDialog<void>(
-                        context: context,
-                        builder: (_) => ApplyTaskDialog(task: task, runnerId: userId),
-                      );
-                    },
-                    icon: const Icon(Icons.send_outlined),
-                    label: Text(s.t('applyTask')),
-                  ),
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s.t('acceptSafetyHint'),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: FilledButton.icon(
+                        onPressed: () async {
+                          final canContinue = await ensureRoleAllowed(context, forPosting: false);
+                          if (!canContinue || !context.mounted) return;
+                          final user = FirebaseAuth.instance.currentUser;
+                          final userId = user?.uid ?? '';
+                          if (userId.isEmpty) return;
+                          showDialog<void>(
+                            context: context,
+                            builder: (_) => ApplyTaskDialog(task: task, runnerId: userId),
+                          );
+                        },
+                        icon: const Icon(Icons.send_outlined),
+                        label: Text(s.t('applyTask')),
+                      ),
+                    ),
+                  ],
                 );
               },
             ),
