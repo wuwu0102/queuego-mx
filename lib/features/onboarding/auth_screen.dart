@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../core/i18n/app_strings.dart';
 import '../../core/services/auth_gate.dart';
@@ -41,6 +42,66 @@ class _LoginModalState extends State<LoginModal> {
       (email, password) => _registerProgressively(email: email, password: password),
       successMessage: AppStrings.of(context).t('authAccountCreated'),
     );
+  }
+
+  Future<void> _loginWithGoogle() async {
+    final s = AppStrings.of(context);
+    const popupErrorMessage =
+        'No se pudo abrir Google. Abre esta página en Chrome/Safari e inténtalo de nuevo.';
+    setState(() => _loading = true);
+    final auth = FirebaseAuth.instance;
+    final current = auth.currentUser;
+    final wasAnonymous = current?.isAnonymous ?? false;
+    final previousUid = wasAnonymous ? (current?.uid ?? '') : '';
+
+    try {
+      final provider = GoogleAuthProvider()
+        ..setCustomParameters({'prompt': 'select_account'});
+      late final UserCredential credential;
+      if (kIsWeb) {
+        try {
+          credential = await auth.signInWithPopup(provider);
+        } on FirebaseAuthException catch (error) {
+          if (_isPopupFailure(error.code)) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text(popupErrorMessage)),
+            );
+            return;
+          }
+          rethrow;
+        }
+      } else {
+        credential = await auth.signInWithProvider(provider);
+      }
+
+      await _migrateAnonymousDataIfNeeded(
+        previousAnonymousUid: previousUid,
+        currentUser: credential.user,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.t('loginSuccess'))),
+      );
+      Navigator.pop(context, true);
+    } on FirebaseAuthException catch (error) {
+      if (!mounted) return;
+      final detail = error.message?.trim();
+      final message = '${s.t('authUnknownError')} (${error.code})'
+          '${detail == null || detail.isEmpty ? '' : ': $detail'}';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  bool _isPopupFailure(String code) {
+    return code == 'popup-blocked' ||
+        code == 'popup-closed-by-user' ||
+        code == 'cancelled-popup-request' ||
+        code == 'web-context-cancelled';
   }
 
   Future<UserCredential> _signInProgressively({
@@ -225,6 +286,15 @@ class _LoginModalState extends State<LoginModal> {
                 child: OutlinedButton(
                   onPressed: _loading ? null : _register,
                   child: Text(s.t('registerCta')),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _loading ? null : _loginWithGoogle,
+                  icon: const Icon(Icons.login),
+                  label: Text(s.t('continueWithGoogle')),
                 ),
               ),
               const SizedBox(height: 8),
