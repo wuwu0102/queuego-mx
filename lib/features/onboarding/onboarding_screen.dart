@@ -180,7 +180,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget _buildScaffold(BuildContext context, User? currentUser) {
     final s = AppStrings.of(context);
     final isLoggedIn = isFormallyLoggedIn(currentUser);
-    final email = currentUser?.email ?? '';
+    final email = _maskEmail(currentUser?.email);
     final showAdmin = isAdminUser(currentUser);
     if (!isLoggedIn) {
       return Scaffold(
@@ -258,6 +258,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const SizedBox(height: 12),
             Text(
               s.t('homeSafetyNotice'),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              s.t('globalComplianceNoticeEs'),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            Text(
+              s.t('globalComplianceNoticeZh'),
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -364,6 +373,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             s.t('homeSafetyNotice'),
             style: Theme.of(context).textTheme.bodySmall,
           ),
+          const SizedBox(height: 6),
+          Text(
+            s.t('globalComplianceNoticeEs'),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          Text(
+            s.t('globalComplianceNoticeZh'),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           if (showAdmin)
             _HomeActionCard(
               icon: Icons.admin_panel_settings_outlined,
@@ -407,6 +425,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         builder: (_) => const TaskHistoryScreen(),
       ),
     );
+  }
+
+  String _maskEmail(String? email) {
+    final value = email?.trim() ?? '';
+    if (!value.contains('@')) return value;
+    final parts = value.split('@');
+    final name = parts.first;
+    if (name.isEmpty) return '***@${parts.last}';
+    if (name.length <= 2) {
+      return '${name[0]}***@${parts.last}';
+    }
+    return '${name.substring(0, 2)}***@${parts.last}';
   }
 }
 
@@ -519,6 +549,7 @@ class _HomeTrustSection extends StatelessWidget {
             const Text('• Beta abierto en Guadalajara'),
             const Text('• Plataforma en prueba'),
             const Text('• Primeras solicitudes serán revisadas manualmente'),
+            const Text('• Servicio enfocado únicamente en gestión de fila y apoyo logístico'),
             const SizedBox(height: 8),
             _MetricLine(
               stream: FirestoreTaskService.instance.streamUsersCount(),
@@ -531,6 +562,10 @@ class _HomeTrustSection extends StatelessWidget {
             _MetricLine(
               stream: FirestoreTaskService.instance.streamTasksCompletedCount(),
               label: 'Tareas completadas',
+            ),
+            _MetricLine(
+              stream: FirestoreTaskService.instance.streamReferenceCasesCount(),
+              label: 'Casos de referencia',
             ),
           ],
         ),

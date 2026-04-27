@@ -159,8 +159,11 @@ class AppStrings {
       'historyReferenceCase': 'Caso de referencia',
       'historyCompletedTask': 'Tarea completada',
       'historyPricePaid': 'Precio pagado',
+      'historyReferencePayment': 'Pago de referencia',
+      'paymentEstimated': 'Pago estimado',
       'historyTaskDuration': 'Tiempo de tarea',
       'historyWaitDuration': 'Tiempo de espera',
+      'historyTimeSaved': 'Tiempo ahorrado',
       'historyUrgencyLevel': 'Nivel',
       'historyPriceExplanation':
           'Los precios dependen del tiempo, la espera y la urgencia.\nTareas más urgentes o con largas filas tienen mayor costo.',
@@ -259,6 +262,18 @@ class AppStrings {
           'Publica solo tareas permitidas por el lugar. No compartas documentos sensibles, contraseñas ni datos bancarios.',
       'acceptSafetyHint':
           'Antes de aceptar, confirma que puedes cumplir la tarea de forma permitida y segura. No aceptes tareas ilegales o sospechosas.',
+      'globalComplianceNoticeEs':
+          'QueueGo MX solo conecta usuarios para apoyo logístico en filas y esperas. No realizamos trámites oficiales, representación legal, decisiones médicas ni manejo de documentos sensibles.',
+      'globalComplianceNoticeZh':
+          'QueueGo MX 僅媒合排隊與等待等現場協助，不代辦官方手續、不提供法律代表、不做醫療決策、不處理敏感文件。',
+      'publishRestrictedNoticeEs':
+          'No compartas contraseñas, datos bancarios, documentos sensibles ni información médica. Para trámites oficiales, el cliente debe presentarse personalmente cuando sea requerido.',
+      'publishRestrictedNoticeZh':
+          '請勿分享密碼、銀行資料、敏感文件或醫療資訊。官方手續如需本人到場，客戶仍須親自出席。',
+      'institutionRiskNoticeEs':
+          'Este servicio es solo para guardar lugar o apoyar en fila. No sustituye la presencia del titular cuando la institución lo requiera.',
+      'institutionRiskNoticeZh':
+          '此服務僅協助排隊或保留位置，若機構要求本人到場，不能取代本人出席。',
       'adminSuspiciousKeywords': 'Indicadores de riesgo detectados',
     },
     'en': {
@@ -403,8 +418,11 @@ class AppStrings {
       'historyReferenceCase': 'Reference case',
       'historyCompletedTask': 'Completed task',
       'historyPricePaid': 'Price paid',
+      'historyReferencePayment': 'Reference payment',
+      'paymentEstimated': 'Estimated payment',
       'historyTaskDuration': 'Task time',
       'historyWaitDuration': 'Wait time',
+      'historyTimeSaved': 'Time saved',
       'historyUrgencyLevel': 'Level',
       'historyPriceExplanation':
           'Prices depend on work time, wait time, and urgency.\nMore urgent tasks or long lines cost more.',
@@ -503,6 +521,18 @@ class AppStrings {
           'Only post tasks allowed by the location. Do not share sensitive documents, passwords, or banking data.',
       'acceptSafetyHint':
           'Before accepting, confirm you can complete the task safely and legally. Do not accept illegal or suspicious tasks.',
+      'globalComplianceNoticeEs':
+          'QueueGo MX solo conecta usuarios para apoyo logístico en filas y esperas. No realizamos trámites oficiales, representación legal, decisiones médicas ni manejo de documentos sensibles.',
+      'globalComplianceNoticeZh':
+          'QueueGo MX 僅媒合排隊與等待等現場協助，不代辦官方手續、不提供法律代表、不做醫療決策、不處理敏感文件。',
+      'publishRestrictedNoticeEs':
+          'No compartas contraseñas, datos bancarios, documentos sensibles ni información médica. Para trámites oficiales, el cliente debe presentarse personalmente cuando sea requerido.',
+      'publishRestrictedNoticeZh':
+          '請勿分享密碼、銀行資料、敏感文件或醫療資訊。官方手續如需本人到場，客戶仍須親自出席。',
+      'institutionRiskNoticeEs':
+          'Este servicio es solo para guardar lugar o apoyar en fila. No sustituye la presencia del titular cuando la institución lo requiera.',
+      'institutionRiskNoticeZh':
+          '此服務僅協助排隊或保留位置，若機構要求本人到場，不能取代本人出席。',
       'adminSuspiciousKeywords': 'Suspicious risk indicators',
     },
     'zh-TW': {
@@ -642,9 +672,12 @@ class AppStrings {
       'historyCompletedLabel': '已完成',
       'historyReferenceCase': '參考案例',
       'historyCompletedTask': '已完成任務',
-      'historyPricePaid': '實際支付價格',
+      'historyPricePaid': 'Precio pagado',
+      'historyReferencePayment': 'Pago de referencia',
+      'paymentEstimated': 'Pago estimado',
       'historyTaskDuration': '任務時間',
       'historyWaitDuration': '等待時間',
+      'historyTimeSaved': 'Tiempo ahorrado',
       'historyUrgencyLevel': '等級',
       'historyPriceExplanation': '價格由時間、等待與緊急程度決定。\n越急、排隊越久，費用越高。',
       'historyCustomerRating': '客戶評分',
@@ -736,6 +769,18 @@ class AppStrings {
       'homeSafetyNotice': 'QueueGo MX 是使用者彼此媒合的排隊協助平台。',
       'publishSafetyHint': '請只發布場所允許的任務，不要提供敏感文件、密碼或銀行資料。',
       'acceptSafetyHint': '接任務前請確認可合法且安全完成，不要接受違法或可疑任務。',
+      'globalComplianceNoticeEs':
+          'QueueGo MX solo conecta usuarios para apoyo logístico en filas y esperas. No realizamos trámites oficiales, representación legal, decisiones médicas ni manejo de documentos sensibles.',
+      'globalComplianceNoticeZh':
+          'QueueGo MX 僅媒合排隊與等待等現場協助，不代辦官方手續、不提供法律代表、不做醫療決策、不處理敏感文件。',
+      'publishRestrictedNoticeEs':
+          'No compartas contraseñas, datos bancarios, documentos sensibles ni información médica. Para trámites oficiales, el cliente debe presentarse personalmente cuando sea requerido.',
+      'publishRestrictedNoticeZh':
+          '請勿分享密碼、銀行資料、敏感文件或醫療資訊。官方手續如需本人到場，客戶仍須親自出席。',
+      'institutionRiskNoticeEs':
+          'Este servicio es solo para guardar lugar o apoyar en fila. No sustituye la presencia del titular cuando la institución lo requiera.',
+      'institutionRiskNoticeZh':
+          '此服務僅協助排隊或保留位置，若機構要求本人到場，不能取代本人出席。',
       'adminSuspiciousKeywords': '可疑關鍵字提醒',
     },
   };
