@@ -89,7 +89,6 @@ class UserProfileService {
 
   String _providerLabel(User user) {
     final ids = user.providerData.map((p) => p.providerId).toSet();
-    if (ids.contains('google.com')) return 'google';
     if (ids.contains('password')) return 'password';
     return 'password';
   }

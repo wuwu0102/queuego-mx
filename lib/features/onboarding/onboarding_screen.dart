@@ -39,34 +39,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _initializeAuthState() async {
-    await _consumeRedirectResult();
     await _resumePendingActionIfAny();
-  }
-
-  Future<void> _consumeRedirectResult() async {
-    final auth = FirebaseAuth.instance;
-    try {
-      final credential = await auth.getRedirectResult();
-      final user = credential.user;
-      if (!mounted || !isFormallyLoggedIn(user)) return;
-      final s = AppStrings.of(context);
-      final loginMessage = isAdminUser(user)
-          ? '管理員登入成功 / Admin login successful / Administrador conectado'
-          : s.t('loginSuccess');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(loginMessage)),
-      );
-    } on FirebaseAuthException catch (error) {
-      if (!mounted) return;
-      final s = AppStrings.of(context);
-      final code = error.code;
-      final detail = error.message?.trim();
-      final message = '${s.t('authUnknownError')} ($code)'
-          '${detail == null || detail.isEmpty ? '' : ': $detail'}';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-    }
   }
 
   Future<void> _resumePendingActionIfAny() async {
