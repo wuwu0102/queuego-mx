@@ -22,6 +22,15 @@ class CustomerShell extends StatefulWidget {
 class _CustomerShellState extends State<CustomerShell> {
   int current = 0;
 
+  Future<void> _onDestinationSelected(int value) async {
+    if (value == 1 && !isFormallyLoggedIn(FirebaseAuth.instance.currentUser)) {
+      final canContinue = await ensureFormalLogin(context);
+      if (!canContinue || !mounted) return;
+    }
+    if (!mounted) return;
+    setState(() => current = value);
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -38,7 +47,7 @@ class _CustomerShellState extends State<CustomerShell> {
       body: pages[current],
       bottomNavigationBar: NavigationBar(
         selectedIndex: current,
-        onDestinationSelected: (value) => setState(() => current = value),
+        onDestinationSelected: _onDestinationSelected,
         destinations: [
           NavigationDestination(
             icon: const Icon(Icons.add_circle_outline),
@@ -344,6 +353,36 @@ class OwnerTasksPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
+    final isGuest = ownerId.isEmpty;
+    if (isGuest) {
+      return Scaffold(
+        appBar: AppBar(title: Text(s.t('myTasks'))),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  s.t('myTasks'),
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  s.t('formalLoginRequired'),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                FilledButton(
+                  onPressed: () => ensureFormalLogin(context),
+                  child: Text(s.t('loginAction')),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(title: Text(s.t('myTasks'))),
       body: StreamBuilder<List<FirestoreTask>>(

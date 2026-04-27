@@ -23,6 +23,16 @@ class RunnerShell extends StatefulWidget {
 class _RunnerShellState extends State<RunnerShell> {
   int current = 0;
 
+  Future<void> _onDestinationSelected(int value) async {
+    final requiresLogin = value == 1 || value == 2;
+    if (requiresLogin && !isFormallyLoggedIn(FirebaseAuth.instance.currentUser)) {
+      final canContinue = await ensureFormalLogin(context);
+      if (!canContinue || !mounted) return;
+    }
+    if (!mounted) return;
+    setState(() => current = value);
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -38,7 +48,7 @@ class _RunnerShellState extends State<RunnerShell> {
       body: pages[current],
       bottomNavigationBar: NavigationBar(
         selectedIndex: current,
-        onDestinationSelected: (value) => setState(() => current = value),
+        onDestinationSelected: _onDestinationSelected,
         destinations: [
           NavigationDestination(
             icon: const Icon(Icons.list_alt_outlined),
@@ -101,6 +111,11 @@ class OpenTasksPage extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             children: [
               const _ModeHeader(),
+              const SizedBox(height: 8),
+              Text(
+                '${s.t('availableTasks')}: ${tasks.length}',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 10),
               ...tasks.map((task) => _OpenTaskCard(task: task, runnerId: runnerId)),
             ],
@@ -324,6 +339,28 @@ class RunnerApplicationsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
+    final isGuest = runnerId.isEmpty;
+    if (isGuest) {
+      return Scaffold(
+        appBar: AppBar(title: Text(s.t('myApplications'))),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(s.t('formalLoginRequired'), textAlign: TextAlign.center),
+                const SizedBox(height: 12),
+                FilledButton(
+                  onPressed: () => ensureFormalLogin(context),
+                  child: Text(s.t('loginAction')),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(title: Text(s.t('myApplications'))),
       body: StreamBuilder<List<TaskApplication>>(
@@ -374,6 +411,28 @@ class RunnerActiveTasksPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
+    final isGuest = runnerId.isEmpty;
+    if (isGuest) {
+      return Scaffold(
+        appBar: AppBar(title: Text(s.t('activeTasks'))),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(s.t('formalLoginRequired'), textAlign: TextAlign.center),
+                const SizedBox(height: 12),
+                FilledButton(
+                  onPressed: () => ensureFormalLogin(context),
+                  child: Text(s.t('loginAction')),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(title: Text(s.t('activeTasks'))),
       body: StreamBuilder<List<FirestoreTask>>(
