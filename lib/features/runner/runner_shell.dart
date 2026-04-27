@@ -23,13 +23,7 @@ class RunnerShell extends StatefulWidget {
 class _RunnerShellState extends State<RunnerShell> {
   int current = 0;
 
-  Future<void> _onDestinationSelected(int value) async {
-    final requiresLogin = value == 1 || value == 2;
-    if (requiresLogin && !isFormallyLoggedIn(FirebaseAuth.instance.currentUser)) {
-      final canContinue = await ensureFormalLogin(context);
-      if (!canContinue || !mounted) return;
-    }
-    if (!mounted) return;
+  void _onDestinationSelected(int value) {
     setState(() => current = value);
   }
 
@@ -135,6 +129,7 @@ class _OpenTaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
+    final isGuest = runnerId.isEmpty;
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: Padding(
@@ -149,52 +144,67 @@ class _OpenTaskCard extends StatelessWidget {
             Text('${s.t('startDate')}: ${task.startDate} ${task.startTime}'),
             Text('${s.t('totalPrice')}: ${roundToTen(task.price).toStringAsFixed(0)} MXN'),
             const SizedBox(height: 8),
-            StreamBuilder<TaskApplication?>(
-              stream: FirestoreTaskService.instance.streamRunnerApplicationForTask(
-                runnerId: runnerId,
-                taskId: task.id,
+            if (isGuest)
+              _ApplyTaskAction(task: task)
+            else
+              StreamBuilder<TaskApplication?>(
+                stream: FirestoreTaskService.instance.streamRunnerApplicationForTask(
+                  runnerId: runnerId,
+                  taskId: task.id,
+                ),
+                builder: (context, snapshot) {
+                  final existing = snapshot.data;
+                  if (existing != null) {
+                    return Text(
+                      s.t('alreadyAppliedTask'),
+                      style: TextStyle(color: Theme.of(context).colorScheme.primary),
+                    );
+                  }
+                  return _ApplyTaskAction(task: task);
+                },
               ),
-              builder: (context, snapshot) {
-                final existing = snapshot.data;
-                if (existing != null) {
-                  return Text(
-                    s.t('alreadyAppliedTask'),
-                    style: TextStyle(color: Theme.of(context).colorScheme.primary),
-                  );
-                }
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      s.t('acceptSafetyHint'),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: FilledButton.icon(
-                        onPressed: () async {
-                          final canContinue = await ensureRoleAllowed(context, forPosting: false);
-                          if (!canContinue || !context.mounted) return;
-                          final user = FirebaseAuth.instance.currentUser;
-                          final userId = user?.uid ?? '';
-                          if (userId.isEmpty) return;
-                          showDialog<void>(
-                            context: context,
-                            builder: (_) => ApplyTaskDialog(task: task, runnerId: userId),
-                          );
-                        },
-                        icon: const Icon(Icons.send_outlined),
-                        label: Text(s.t('applyTask')),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ApplyTaskAction extends StatelessWidget {
+  const _ApplyTaskAction({required this.task});
+
+  final FirestoreTask task;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          s.t('acceptSafetyHint'),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerRight,
+          child: FilledButton.icon(
+            onPressed: () async {
+              final canContinue = await ensureRoleAllowed(context, forPosting: false);
+              if (!canContinue || !context.mounted) return;
+              final user = FirebaseAuth.instance.currentUser;
+              final userId = user?.uid ?? '';
+              if (userId.isEmpty) return;
+              showDialog<void>(
+                context: context,
+                builder: (_) => ApplyTaskDialog(task: task, runnerId: userId),
+              );
+            },
+            icon: const Icon(Icons.send_outlined),
+            label: Text(s.t('applyTask')),
+          ),
+        ),
+      ],
     );
   }
 }
