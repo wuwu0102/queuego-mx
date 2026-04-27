@@ -1,11 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/i18n/app_strings.dart';
 import '../../core/services/auth_gate.dart';
 import '../../core/services/firestore_task_service.dart';
 import '../../core/services/user_profile_service.dart';
+
+const _googleRedirectAnonymousUidKey = 'google_redirect_previous_anonymous_uid';
 
 class LoginModal extends StatefulWidget {
   const LoginModal({super.key});
@@ -46,8 +49,6 @@ class _LoginModalState extends State<LoginModal> {
 
   Future<void> _loginWithGoogle() async {
     final s = AppStrings.of(context);
-    const popupErrorMessage =
-        'No se pudo abrir Google. Abre esta página en Chrome/Safari e inténtalo de nuevo.';
     setState(() => _loading = true);
     final auth = FirebaseAuth.instance;
     final current = auth.currentUser;
@@ -57,33 +58,25 @@ class _LoginModalState extends State<LoginModal> {
     try {
       final provider = GoogleAuthProvider()
         ..setCustomParameters({'prompt': 'select_account'});
-      late final UserCredential credential;
       if (kIsWeb) {
-        try {
-          credential = await auth.signInWithPopup(provider);
-        } on FirebaseAuthException catch (error) {
-          if (_isPopupFailure(error.code)) {
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text(popupErrorMessage)),
-            );
-            return;
-          }
-          rethrow;
+        if (previousUid.isNotEmpty) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_googleRedirectAnonymousUidKey, previousUid);
         }
+        await auth.signInWithRedirect(provider);
+        return;
       } else {
-        credential = await auth.signInWithProvider(provider);
+        final credential = await auth.signInWithProvider(provider);
+        await _migrateAnonymousDataIfNeeded(
+          previousAnonymousUid: previousUid,
+          currentUser: credential.user,
+        );
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.t('loginSuccess'))),
+        );
+        Navigator.pop(context, true);
       }
-
-      await _migrateAnonymousDataIfNeeded(
-        previousAnonymousUid: previousUid,
-        currentUser: credential.user,
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(s.t('loginSuccess'))),
-      );
-      Navigator.pop(context, true);
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
       final detail = error.message?.trim();
@@ -95,13 +88,6 @@ class _LoginModalState extends State<LoginModal> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
-  }
-
-  bool _isPopupFailure(String code) {
-    return code == 'popup-blocked' ||
-        code == 'popup-closed-by-user' ||
-        code == 'cancelled-popup-request' ||
-        code == 'web-context-cancelled';
   }
 
   Future<UserCredential> _signInProgressively({
@@ -311,6 +297,25 @@ class _LoginModalState extends State<LoginModal> {
       ),
     );
   }
+}
+
+Future<bool> handleGoogleSignInRedirect() async {
+  final auth = FirebaseAuth.instance;
+  final credential = await auth.getRedirectResult();
+  final redirectUser = credential.user;
+  if (redirectUser == null) return false;
+  final prefs = await SharedPreferences.getInstance();
+  final previousUid = prefs.getString(_googleRedirectAnonymousUidKey) ?? '';
+  await prefs.remove(_googleRedirectAnonymousUidKey);
+  if (previousUid.isNotEmpty && previousUid != redirectUser.uid) {
+    await FirestoreTaskService.instance.migrateAnonymousUserData(
+      fromAnonymousUid: previousUid,
+      toFormalUid: redirectUser.uid,
+      formalEmail: redirectUser.email,
+      formalDisplayName: redirectUser.displayName,
+    );
+  }
+  return true;
 }
 
 Future<bool> showLoginModal(BuildContext context) async {

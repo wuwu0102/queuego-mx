@@ -362,7 +362,7 @@ class RunnerApplicationsPage extends StatelessWidget {
                 Text(s.t('formalLoginRequired'), textAlign: TextAlign.center),
                 const SizedBox(height: 12),
                 FilledButton(
-                  onPressed: () => ensureFormalLogin(context),
+                  onPressed: () => ensureFormalLogin(context, pendingAction: PendingAuthAction.myApplications),
                   child: Text(s.t('loginAction')),
                 ),
               ],
@@ -434,7 +434,7 @@ class RunnerActiveTasksPage extends StatelessWidget {
                 Text(s.t('formalLoginRequired'), textAlign: TextAlign.center),
                 const SizedBox(height: 12),
                 FilledButton(
-                  onPressed: () => ensureFormalLogin(context),
+                  onPressed: () => ensureFormalLogin(context, pendingAction: PendingAuthAction.activeTasks),
                   child: Text(s.t('loginAction')),
                 ),
               ],

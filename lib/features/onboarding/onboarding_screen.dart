@@ -26,6 +26,15 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   String? _rolePromptedUid;
   String? _adminWelcomedUid;
+  bool _processingRedirect = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _processGoogleRedirectLogin();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,6 +72,53 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final role = await _showRoleDialog(context);
     if (role == null) return;
     await UserProfileService.instance.updateRole(uid: uid, role: role);
+  }
+
+  Future<void> _processGoogleRedirectLogin() async {
+    if (_processingRedirect) return;
+    _processingRedirect = true;
+    try {
+      final didRedirectLogin = await handleGoogleSignInRedirect();
+      if (!didRedirectLogin) return;
+      final pendingAction = await consumePendingAuthAction();
+      if (!mounted) return;
+      final s = AppStrings.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.t('loginSuccess'))),
+      );
+      if (pendingAction != null) {
+        await _resumePendingAction(pendingAction);
+      }
+    } on FirebaseAuthException catch (_) {
+      await clearPendingAuthAction();
+    } finally {
+      _processingRedirect = false;
+    }
+  }
+
+  Future<void> _resumePendingAction(PendingAuthAction action) async {
+    if (!mounted) return;
+    switch (action) {
+      case PendingAuthAction.publishTask:
+      case PendingAuthAction.myTasks:
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const CustomerShell(),
+          ),
+        );
+        return;
+      case PendingAuthAction.takeTask:
+      case PendingAuthAction.myApplications:
+      case PendingAuthAction.activeTasks:
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const RunnerShell(),
+          ),
+        );
+        return;
+    }
   }
 
   Future<String?> _showRoleDialog(BuildContext context) {

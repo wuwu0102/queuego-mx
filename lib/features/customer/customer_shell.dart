@@ -369,7 +369,7 @@ class OwnerTasksPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 FilledButton(
-                  onPressed: () => ensureFormalLogin(context),
+                  onPressed: () => ensureFormalLogin(context, pendingAction: PendingAuthAction.myTasks),
                   child: Text(s.t('loginAction')),
                 ),
               ],
@@ -608,7 +608,7 @@ class CustomerTaskApplicationsPage extends StatelessWidget {
 
   Future<void> _accept(BuildContext context, TaskApplication app) async {
     final s = AppStrings.of(context);
-    final canContinue = await ensureFormalLogin(context);
+    final canContinue = await ensureFormalLogin(context, pendingAction: PendingAuthAction.myTasks);
     if (!canContinue) return;
     await FirestoreTaskService.instance.acceptApplication(task: task, application: app);
     if (!context.mounted) return;
@@ -619,7 +619,7 @@ class CustomerTaskApplicationsPage extends StatelessWidget {
 
   Future<void> _reject(BuildContext context, TaskApplication app) async {
     final s = AppStrings.of(context);
-    final canContinue = await ensureFormalLogin(context);
+    final canContinue = await ensureFormalLogin(context, pendingAction: PendingAuthAction.myTasks);
     if (!canContinue) return;
     await FirestoreTaskService.instance.rejectApplication(app.id);
     if (!context.mounted) return;
@@ -1001,7 +1001,7 @@ class _CustomerTaskMessagesSectionState extends State<_CustomerTaskMessagesSecti
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-    final canContinue = await ensureFormalLogin(context);
+    final canContinue = await ensureFormalLogin(context, pendingAction: PendingAuthAction.myTasks);
     if (!canContinue) return;
     setState(() => _sending = true);
     try {
