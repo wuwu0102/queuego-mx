@@ -22,12 +22,7 @@ class CustomerShell extends StatefulWidget {
 class _CustomerShellState extends State<CustomerShell> {
   int current = 0;
 
-  Future<void> _onDestinationSelected(int value) async {
-    if (value == 1 && !isFormallyLoggedIn(FirebaseAuth.instance.currentUser)) {
-      final canContinue = await ensureFormalLogin(context);
-      if (!canContinue || !mounted) return;
-    }
-    if (!mounted) return;
+  void _onDestinationSelected(int value) {
     setState(() => current = value);
   }
 
