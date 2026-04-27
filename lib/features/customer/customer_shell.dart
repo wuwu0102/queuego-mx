@@ -13,14 +13,25 @@ import '../../core/services/auth_gate.dart';
 import '../../core/utils/number_parsing.dart';
 
 class CustomerShell extends StatefulWidget {
-  const CustomerShell({super.key});
+  const CustomerShell({
+    super.key,
+    this.initialTab = 0,
+  });
+
+  final int initialTab;
 
   @override
   State<CustomerShell> createState() => _CustomerShellState();
 }
 
 class _CustomerShellState extends State<CustomerShell> {
-  int current = 0;
+  late int current;
+
+  @override
+  void initState() {
+    super.initState();
+    current = widget.initialTab.clamp(0, 1).toInt();
+  }
 
   void _onDestinationSelected(int value) {
     setState(() => current = value);
