@@ -174,6 +174,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           }
           final tasks = snapshot.data!;
           final statusCounts = <String, int>{
+            'pending': 0,
             'open': 0,
             'accepted': 0,
             'arrived': 0,

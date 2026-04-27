@@ -79,7 +79,7 @@ class FirestoreTaskService {
       'waitHours': waitingHours,
       'totalHours': estimatedHours + waitingHours,
       'price': totalPrice,
-      'status': 'open',
+      'status': 'pending',
       'createdAt': FieldValue.serverTimestamp(),
       'ownerId': ownerId,
       'ownerEmail': ownerEmail,
@@ -164,7 +164,11 @@ class FirestoreTaskService {
     return _tasks.snapshots().map((snapshot) {
       final tasks = snapshot.docs
           .map(FirestoreTask.fromDoc)
-          .where((task) => task.status == 'open' && !task.isHistoryExample)
+          .where(
+            (task) =>
+                (task.status == 'open' || task.status == 'pending') &&
+                !task.isHistoryExample,
+          )
           .toList(growable: false);
       return _sortTasksByCreatedAtDesc(tasks);
     });
@@ -274,6 +278,14 @@ class FirestoreTaskService {
 
   Stream<int> streamUsersCount() =>
       _users.snapshots().map((snapshot) => snapshot.docs.length);
+
+  Stream<int> streamTasksPublishedCount() =>
+      _tasks.snapshots().map((snapshot) => snapshot.docs.length);
+
+  Stream<int> streamTasksCompletedCount() => _tasks
+      .where('status', isEqualTo: 'completed')
+      .snapshots()
+      .map((snapshot) => snapshot.docs.length);
 
   Stream<int> streamApplicationsCount() =>
       _applications.snapshots().map((snapshot) => snapshot.docs.length);
@@ -618,7 +630,9 @@ class FirestoreTaskService {
     await FirebaseFirestore.instance.runTransaction((transaction) async {
       final snapshot = await transaction.get(ref);
       final task = FirestoreTask.fromDoc(snapshot);
-      if (task.status != 'open' && task.status != 'negotiating') {
+      if (task.status != 'open' &&
+          task.status != 'pending' &&
+          task.status != 'negotiating') {
         throw StateError('cancel_forbidden');
       }
       transaction.update(ref, {
@@ -930,8 +944,8 @@ class FirestoreTaskService {
   List<FirestoreTask> _sortTasksByCreatedAtDesc(List<FirestoreTask> tasks) {
     final sorted = List<FirestoreTask>.from(tasks);
     sorted.sort((a, b) {
-      final openA = a.status == 'open' ? 1 : 0;
-      final openB = b.status == 'open' ? 1 : 0;
+      final openA = (a.status == 'open' || a.status == 'pending') ? 1 : 0;
+      final openB = (b.status == 'open' || b.status == 'pending') ? 1 : 0;
       if (openA != openB) return openB.compareTo(openA);
       final created = _compareDateDesc(a.createdAt, b.createdAt);
       if (created != 0) return created;

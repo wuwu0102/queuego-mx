@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/i18n/app_strings.dart';
 import '../../core/models/user_profile.dart';
 import '../../core/services/auth_gate.dart';
+import '../../core/services/firestore_task_service.dart';
 import '../../core/services/user_profile_service.dart';
 import '../admin/admin_dashboard_screen.dart';
 import '../customer/customer_shell.dart';
@@ -12,7 +13,6 @@ import '../runner/runner_shell.dart';
 import '../shared/privacy_screen.dart';
 import '../shared/task_history_screen.dart';
 import '../shared/terms_screen.dart';
-import 'auth_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key, required this.onLocaleChanged});
@@ -30,7 +30,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   String? _rolePromptedUid;
   String? _adminWelcomedUid;
-  bool _attemptedAnonymousSignIn = false;
   bool _resumedPendingAction = false;
 
   @override
@@ -41,7 +40,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Future<void> _initializeAuthState() async {
     await _consumeRedirectResult();
-    await _ensureAnonymousSession();
     await _resumePendingActionIfAny();
   }
 
@@ -68,18 +66,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
-    }
-  }
-
-  Future<void> _ensureAnonymousSession() async {
-    if (_attemptedAnonymousSignIn) return;
-    _attemptedAnonymousSignIn = true;
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser != null) return;
-    try {
-      await FirebaseAuth.instance.signInAnonymously();
-    } on FirebaseAuthException {
-      // Keep the app usable even if anonymous auth is disabled.
     }
   }
 
@@ -172,10 +158,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           title: Text(s.t('appName')),
           actions: [
             TextButton(
-              onPressed: () => showLoginModal(context),
-              child: Text(s.t('loginAction')),
-            ),
-            TextButton(
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const TermsScreen()),
@@ -235,6 +217,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               subtitle: s.t('completedHistorySubtitle'),
               onTap: () => _openHistoryFlow(context),
             ),
+            const SizedBox(height: 8),
+            const _HomeTrustSection(),
             const SizedBox(height: 12),
             Text(
               s.t('homeSafetyNotice'),
@@ -337,6 +321,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             subtitle: s.t('completedHistorySubtitle'),
             onTap: () => _openHistoryFlow(context),
           ),
+          const SizedBox(height: 8),
+          const _HomeTrustSection(),
           const SizedBox(height: 12),
           Text(
             s.t('homeSafetyNotice'),
@@ -488,6 +474,66 @@ class _HomeActionCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _HomeTrustSection extends StatelessWidget {
+  const _HomeTrustSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Confianza',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            const Text('• Beta abierto en Guadalajara'),
+            const Text('• Plataforma en prueba'),
+            const Text('• Primeras solicitudes serán revisadas manualmente'),
+            const SizedBox(height: 8),
+            _MetricLine(
+              stream: FirestoreTaskService.instance.streamUsersCount(),
+              label: 'Usuarios registrados',
+            ),
+            _MetricLine(
+              stream: FirestoreTaskService.instance.streamTasksPublishedCount(),
+              label: 'Solicitudes publicadas',
+            ),
+            _MetricLine(
+              stream: FirestoreTaskService.instance.streamTasksCompletedCount(),
+              label: 'Tareas completadas',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MetricLine extends StatelessWidget {
+  const _MetricLine({required this.stream, required this.label});
+
+  final Stream<int> stream;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<int>(
+      stream: stream,
+      builder: (context, snapshot) {
+        final count = snapshot.data ?? 0;
+        if (count <= 0) return const SizedBox.shrink();
+        return Text('• $label: $count');
+      },
     );
   }
 }

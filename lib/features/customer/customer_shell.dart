@@ -379,7 +379,7 @@ class _TaskCard extends StatelessWidget {
   final FirestoreTask task;
   final String ownerId;
 
-  bool get _showCancel => task.status == 'open';
+  bool get _showCancel => task.status == 'open' || task.status == 'pending';
 
   Future<void> _cancelTask(BuildContext context) async {
     final s = AppStrings.of(context);
@@ -448,7 +448,7 @@ class _TaskCard extends StatelessWidget {
               const SizedBox(height: 6),
               _HandoffCodeCard(task: task),
             ],
-            if (task.status == 'open')
+            if (task.status == 'open' || task.status == 'pending')
               StreamBuilder<int>(
                 stream: FirestoreTaskService.instance.streamTaskApplicationCount(task.id),
                 builder: (context, snapshot) {
@@ -636,7 +636,10 @@ class CustomerTaskApplicationsPage extends StatelessWidget {
                 )
               else
                 ...apps.map((app) {
-                  final isPending = latestTask.status == 'open' && app.status == 'pending';
+                  final isPending =
+                      (latestTask.status == 'open' ||
+                          latestTask.status == 'pending') &&
+                      app.status == 'pending';
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
                     child: Padding(
