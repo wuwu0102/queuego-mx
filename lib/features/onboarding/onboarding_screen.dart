@@ -1,6 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/i18n/app_strings.dart';
 import '../../core/models/user_profile.dart';
@@ -25,42 +24,8 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  static const _pendingActionKey = 'pending_protected_action';
-  static const _pendingActionPublish = 'publish';
-  static const _pendingActionRunner = 'runner';
-
   String? _rolePromptedUid;
   String? _adminWelcomedUid;
-  bool _resumedPendingAction = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeAuthState();
-  }
-
-  Future<void> _initializeAuthState() async {
-    await _resumePendingActionIfAny();
-  }
-
-  Future<void> _resumePendingActionIfAny() async {
-    if (_resumedPendingAction || !mounted) return;
-    _resumedPendingAction = true;
-    if (!isFormallyLoggedIn(FirebaseAuth.instance.currentUser)) return;
-    final prefs = await SharedPreferences.getInstance();
-    final action = prefs.getString(_pendingActionKey);
-    if (action == null || action.isEmpty) return;
-    await prefs.remove(_pendingActionKey);
-    if (!mounted) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (action == _pendingActionPublish) {
-        _openPublishFlow(context, persistIntent: false);
-      } else if (action == _pendingActionRunner) {
-        _openRunnerFlow(context, persistIntent: false);
-      }
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -325,20 +290,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Future<void> _openPublishFlow(BuildContext context, {bool persistIntent = true}) async {
-    final needsLogin = !isFormallyLoggedIn(FirebaseAuth.instance.currentUser);
-    if (persistIntent && needsLogin) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_pendingActionKey, _pendingActionPublish);
-    }
-    final canContinue = await ensureRoleAllowed(context, forPosting: true);
-    if (!canContinue) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_pendingActionKey);
-      return;
-    }
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_pendingActionKey);
+  Future<void> _openPublishFlow(BuildContext context) async {
     if (!context.mounted) return;
     await Navigator.push(
       context,
@@ -348,20 +300,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Future<void> _openRunnerFlow(BuildContext context, {bool persistIntent = true}) async {
-    final needsLogin = !isFormallyLoggedIn(FirebaseAuth.instance.currentUser);
-    if (persistIntent && needsLogin) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_pendingActionKey, _pendingActionRunner);
-    }
-    final canContinue = await ensureRoleAllowed(context, forPosting: false);
-    if (!canContinue) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_pendingActionKey);
-      return;
-    }
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_pendingActionKey);
+  Future<void> _openRunnerFlow(BuildContext context) async {
     await Navigator.push(
       context,
       MaterialPageRoute(
