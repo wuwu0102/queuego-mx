@@ -7,6 +7,7 @@ import '../../core/models/user_profile.dart';
 import '../../core/services/auth_gate.dart';
 import '../../core/services/firestore_task_service.dart';
 import '../../core/services/user_profile_service.dart';
+import 'auth_screen.dart';
 import '../admin/admin_dashboard_screen.dart';
 import '../customer/customer_shell.dart';
 import '../runner/runner_shell.dart';
@@ -130,6 +131,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         appBar: AppBar(
           title: Text(s.t('appName')),
           actions: [
+            TextButton(
+              onPressed: () async {
+                await showLoginModal(context);
+              },
+              child: Text(s.t('loginAction')),
+            ),
             TextButton(
               onPressed: () => Navigator.push(
                 context,
@@ -319,12 +326,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _openPublishFlow(BuildContext context, {bool persistIntent = true}) async {
-    if (persistIntent) {
+    final needsLogin = !isFormallyLoggedIn(FirebaseAuth.instance.currentUser);
+    if (persistIntent && needsLogin) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_pendingActionKey, _pendingActionPublish);
     }
     final canContinue = await ensureRoleAllowed(context, forPosting: true);
-    if (!canContinue) return;
+    if (!canContinue) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_pendingActionKey);
+      return;
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_pendingActionKey);
     if (!context.mounted) return;
@@ -337,12 +349,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _openRunnerFlow(BuildContext context, {bool persistIntent = true}) async {
-    if (persistIntent) {
+    final needsLogin = !isFormallyLoggedIn(FirebaseAuth.instance.currentUser);
+    if (persistIntent && needsLogin) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_pendingActionKey, _pendingActionRunner);
     }
     final canContinue = await ensureRoleAllowed(context, forPosting: false);
-    if (!canContinue) return;
+    if (!canContinue) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_pendingActionKey);
+      return;
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_pendingActionKey);
     await Navigator.push(
