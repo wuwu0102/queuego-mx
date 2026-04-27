@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/i18n/app_strings.dart';
 import '../../core/models/user_profile.dart';
@@ -23,14 +24,51 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
+  static const _pendingActionKey = 'pending_protected_action';
+  static const _pendingActionPublish = 'publish';
+  static const _pendingActionRunner = 'runner';
+
   String? _rolePromptedUid;
   String? _adminWelcomedUid;
   bool _attemptedAnonymousSignIn = false;
+  bool _resumedPendingAction = false;
 
   @override
   void initState() {
     super.initState();
-    _ensureAnonymousSession();
+    _initializeAuthState();
+  }
+
+  Future<void> _initializeAuthState() async {
+    await _consumeRedirectResult();
+    await _ensureAnonymousSession();
+    await _resumePendingActionIfAny();
+  }
+
+  Future<void> _consumeRedirectResult() async {
+    final auth = FirebaseAuth.instance;
+    try {
+      final credential = await auth.getRedirectResult();
+      final user = credential.user;
+      if (!mounted || !isFormallyLoggedIn(user)) return;
+      final s = AppStrings.of(context);
+      final loginMessage = isAdminUser(user)
+          ? '管理員登入成功 / Admin login successful / Administrador conectado'
+          : s.t('loginSuccess');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(loginMessage)),
+      );
+    } on FirebaseAuthException catch (error) {
+      if (!mounted) return;
+      final s = AppStrings.of(context);
+      final code = error.code;
+      final detail = error.message?.trim();
+      final message = '${s.t('authUnknownError')} ($code)'
+          '${detail == null || detail.isEmpty ? '' : ': $detail'}';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
   }
 
   Future<void> _ensureAnonymousSession() async {
@@ -43,6 +81,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     } on FirebaseAuthException {
       // Keep the app usable even if anonymous auth is disabled.
     }
+  }
+
+  Future<void> _resumePendingActionIfAny() async {
+    if (_resumedPendingAction || !mounted) return;
+    _resumedPendingAction = true;
+    if (!isFormallyLoggedIn(FirebaseAuth.instance.currentUser)) return;
+    final prefs = await SharedPreferences.getInstance();
+    final action = prefs.getString(_pendingActionKey);
+    if (action == null || action.isEmpty) return;
+    await prefs.remove(_pendingActionKey);
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (action == _pendingActionPublish) {
+        _openPublishFlow(context, persistIntent: false);
+      } else if (action == _pendingActionRunner) {
+        _openRunnerFlow(context, persistIntent: false);
+      }
+    });
   }
 
   @override
@@ -302,7 +359,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Future<void> _openPublishFlow(BuildContext context) async {
+  Future<void> _openPublishFlow(BuildContext context, {bool persistIntent = true}) async {
+    if (persistIntent) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_pendingActionKey, _pendingActionPublish);
+    }
+    final canContinue = await ensureRoleAllowed(context, forPosting: true);
+    if (!canContinue) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_pendingActionKey);
     if (!context.mounted) return;
     await Navigator.push(
       context,
@@ -312,7 +377,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Future<void> _openRunnerFlow(BuildContext context) async {
+  Future<void> _openRunnerFlow(BuildContext context, {bool persistIntent = true}) async {
+    if (persistIntent) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_pendingActionKey, _pendingActionRunner);
+    }
+    final canContinue = await ensureRoleAllowed(context, forPosting: false);
+    if (!canContinue) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_pendingActionKey);
     await Navigator.push(
       context,
       MaterialPageRoute(

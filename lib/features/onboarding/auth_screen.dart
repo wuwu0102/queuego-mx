@@ -85,10 +85,9 @@ class _LoginModalState extends State<LoginModal> {
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
       final code = error.code;
-      final message = switch (code) {
-        'popup-closed-by-user' => s.t('authUnknownError'),
-        _ => s.t('authUnknownError'),
-      };
+      final detail = error.message?.trim();
+      final message = '${s.t('authUnknownError')} ($code)'
+          '${detail == null || detail.isEmpty ? '' : ': $detail'}';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
@@ -210,11 +209,14 @@ class _LoginModalState extends State<LoginModal> {
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
       final code = error.code;
-      final message = switch (code) {
+      final baseMessage = switch (code) {
         'wrong-password' || 'invalid-credential' => s.t('authWrongPassword'),
         'user-not-found' => s.t('authUserNotFound'),
         _ => s.t('authUnknownError'),
       };
+      final detail = error.message?.trim();
+      final message = '$baseMessage ($code)'
+          '${detail == null || detail.isEmpty ? '' : ': $detail'}';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
