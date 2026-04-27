@@ -102,7 +102,7 @@ class FirestoreTask {
       waitHours: parseDouble(data['waitHours']),
       totalHours: parseDouble(data['totalHours']),
       price: parseDouble(data['price']),
-      status: (data['status'] ?? 'open') as String,
+      status: (data['status'] ?? 'pending') as String,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       ownerId: (data['ownerId'] ?? '') as String,
       ownerEmail: data['ownerEmail'] as String?,
