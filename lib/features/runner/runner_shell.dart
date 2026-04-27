@@ -153,7 +153,15 @@ class _OpenTaskCard extends StatelessWidget {
             Text('${s.t('locationLabel')}: ${task.location}'),
             Text('${s.t('onsiteInstructions')}: ${task.note}'),
             Text('${s.t('startDate')}: ${task.startDate} ${task.startTime}'),
-            Text('${s.t('totalPrice')}: ${roundToTen(task.price).toStringAsFixed(0)} MXN'),
+            Text('${s.t('paymentEstimated')}: ${roundToTen(task.price).toStringAsFixed(0)} MXN'),
+            Text('${s.t('historyUrgencyLevel')}: ${_urgencyLabel(s, task.urgencyLevel)}'),
+            Text('${s.t('historyTimeSaved')}: ${(task.workHours + task.waitHours).toStringAsFixed(1)} h'),
+            Text('${s.t('historyCustomerRating')}: ⭐ ${task.ratingFromCustomer?.toStringAsFixed(1) ?? '-'}'),
+            if (_requiresExtraInstitutionReminder(task)) ...[
+              const SizedBox(height: 4),
+              Text(s.t('institutionRiskNoticeEs'), style: Theme.of(context).textTheme.bodySmall),
+              Text(s.t('institutionRiskNoticeZh'), style: Theme.of(context).textTheme.bodySmall),
+            ],
             const SizedBox(height: 8),
             if (isGuest)
               _ApplyTaskAction(task: task)
@@ -218,6 +226,25 @@ class _ApplyTaskAction extends StatelessWidget {
       ],
     );
   }
+}
+
+String _urgencyLabel(AppStrings s, String urgency) {
+  switch (urgency) {
+    case 'priority':
+      return s.t('urgencyPriority');
+    case 'urgent':
+      return s.t('urgencyUrgent');
+    default:
+      return s.t('urgencyNormal');
+  }
+}
+
+bool _requiresExtraInstitutionReminder(FirestoreTask task) {
+  final haystack = '${task.title} ${task.location}'.toLowerCase();
+  return haystack.contains('sat') ||
+      haystack.contains('gobierno') ||
+      haystack.contains('hospital') ||
+      haystack.contains('imss');
 }
 
 class ApplyTaskDialog extends StatefulWidget {
@@ -624,8 +651,17 @@ class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
             Text(task.title, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Text('${s.t('locationLabel')}: ${task.location}'),
-            Text('${s.t('totalPrice')}: ${roundToTen(task.price).toStringAsFixed(0)} MXN'),
+            Text('${task.isHistoryExample || task.isDemo ? s.t('historyReferencePayment') : s.t('historyPricePaid')}: ${roundToTen(task.price).toStringAsFixed(0)} MXN'),
             Text('${s.t('customerArrivalBufferHours')}: ${task.waitHours}'),
+            Text('${s.t('historyUrgencyLevel')}: ${_urgencyLabel(s, task.urgencyLevel)}'),
+            Text('${s.t('historyTimeSaved')}: ${(task.workHours + task.waitHours).toStringAsFixed(1)} h'),
+            if (_requiresExtraInstitutionReminder(task)) ...[
+              Text(s.t('institutionRiskNoticeEs'), style: Theme.of(context).textTheme.bodySmall),
+              Text(s.t('institutionRiskNoticeZh'), style: Theme.of(context).textTheme.bodySmall),
+            ] else ...[
+              Text(s.t('globalComplianceNoticeEs'), style: Theme.of(context).textTheme.bodySmall),
+              Text(s.t('globalComplianceNoticeZh'), style: Theme.of(context).textTheme.bodySmall),
+            ],
             Text('${s.t('status')}: ${s.statusLabel(task.status)}'),
             _TrustScorePanel(userId: task.ownerId),
             if ((task.progressNote ?? '').isNotEmpty)

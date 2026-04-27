@@ -325,6 +325,15 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   s.t('publishSafetyHint'),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
+                const SizedBox(height: 6),
+                Text(
+                  s.t('publishRestrictedNoticeEs'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                Text(
+                  s.t('publishRestrictedNoticeZh'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
@@ -335,6 +344,15 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       _submitting ? s.t('saving') : s.t('publishTaskButton'),
                     ),
                   ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  s.t('globalComplianceNoticeEs'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                Text(
+                  s.t('globalComplianceNoticeZh'),
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
             ),
@@ -455,8 +473,23 @@ class _TaskCard extends StatelessWidget {
           children: [
             Text('${s.t('locationLabel')}: ${task.location}'),
             Text('${s.t('startDate')}: ${task.startDate} ${task.startTime}'),
-            Text('${s.t('totalPrice')}: ${roundToTen(task.price).toStringAsFixed(0)} MXN'),
+            Text('${s.t('paymentEstimated')}: ${roundToTen(task.price).toStringAsFixed(0)} MXN'),
+            Text('${s.t('historyUrgencyLevel')}: ${_urgencyLabel(s, task.urgencyLevel)}'),
+            Text('${s.t('historyTimeSaved')}: ${(task.workHours + task.waitHours).toStringAsFixed(1)} h'),
+            Text('${s.t('historyCustomerRating')}: ⭐ ${task.ratingFromCustomer?.toStringAsFixed(1) ?? '-'}'),
             Text('${s.t('status')}: ${s.statusLabel(task.status)}'),
+            Text(
+              _requiresExtraInstitutionReminder(task)
+                  ? s.t('institutionRiskNoticeEs')
+                  : s.t('globalComplianceNoticeEs'),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            Text(
+              _requiresExtraInstitutionReminder(task)
+                  ? s.t('institutionRiskNoticeZh')
+                  : s.t('globalComplianceNoticeZh'),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
             if ((task.accepterId ?? '').isNotEmpty)
               _TrustScorePanel(userId: task.accepterId!),
             if ((task.progressImageUrl ?? '').isNotEmpty)
@@ -606,6 +639,17 @@ class _ProgressPhotoLink extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+String _urgencyLabel(AppStrings s, String urgency) {
+  switch (urgency) {
+    case 'priority':
+      return s.t('urgencyPriority');
+    case 'urgent':
+      return s.t('urgencyUrgent');
+    default:
+      return s.t('urgencyNormal');
   }
 }
 
@@ -1092,4 +1136,12 @@ class _CustomerTaskMessagesSectionState extends State<_CustomerTaskMessagesSecti
       ],
     );
   }
+}
+
+bool _requiresExtraInstitutionReminder(FirestoreTask task) {
+  final haystack = '${task.title} ${task.location}'.toLowerCase();
+  return haystack.contains('sat') ||
+      haystack.contains('gobierno') ||
+      haystack.contains('hospital') ||
+      haystack.contains('imss');
 }

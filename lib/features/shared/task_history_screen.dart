@@ -60,6 +60,14 @@ class _HistoryTaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
+    final isReference = task.isDemo || task.isHistoryExample;
+    final timeSaved = (task.workHours + task.waitHours).toStringAsFixed(1);
+    final customerName = task.customerPublicName?.trim().isNotEmpty == true
+        ? task.customerPublicName!
+        : 'Cliente verificado';
+    final runnerName = task.runnerPublicName?.trim().isNotEmpty == true
+        ? task.runnerPublicName!
+        : 'Runner verificado';
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: Padding(
@@ -70,18 +78,23 @@ class _HistoryTaskCard extends StatelessWidget {
             Text(task.title, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 6),
             Text(
-              '${s.t('status')}: ${task.isDemo || task.isHistoryExample ? s.t('historyReferenceCase') : s.t('historyCompletedTask')}',
+              '${s.t('status')}: ${isReference ? s.t('historyReferenceCase') : s.t('historyCompletedTask')}',
             ),
+            Text('Cliente: $customerName'),
+            Text('Runner: $runnerName'),
             Text('${s.t('locationLabel')}: ${task.location}'),
             Text('${s.t('onsiteInstructions')}: ${task.note}'),
             if (task.instructions.trim().isNotEmpty)
               Text('${s.t('instructionsLabel')}: ${task.instructions}'),
             const SizedBox(height: 4),
             _UrgencyBadge(level: task.urgencyLevel),
-            Text('${s.t('historyPricePaid')}: ${roundToTen(task.price).toStringAsFixed(0)} MXN'),
+            Text(
+              '${isReference ? s.t('historyReferencePayment') : s.t('historyPricePaid')}: ${roundToTen(task.price).toStringAsFixed(0)} MXN',
+            ),
             Text('${s.t('startDate')}: ${task.startDate} ${task.startTime}'),
             Text('${s.t('historyTaskDuration')}: ${task.estimatedHours.toStringAsFixed(1)} h'),
             Text('${s.t('historyWaitDuration')}: ${task.waitHours.toStringAsFixed(1)} h'),
+            Text('${s.t('historyTimeSaved')}: $timeSaved h'),
             if (task.completedAt != null)
               Text('${s.t('completedAt')}: ${DateFormat('yyyy-MM-dd HH:mm').format(task.completedAt!)}'),
             Text(
@@ -89,6 +102,15 @@ class _HistoryTaskCard extends StatelessWidget {
             ),
             Text(
               '${s.t('historyRunnerRating')}: ⭐ ${task.ratingFromRunner?.toStringAsFixed(1) ?? '-'}',
+            ),
+            const SizedBox(height: 6),
+            Text(
+              s.t('globalComplianceNoticeEs'),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            Text(
+              s.t('globalComplianceNoticeZh'),
+              style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
         ),

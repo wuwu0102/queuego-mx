@@ -287,6 +287,11 @@ class FirestoreTaskService {
       .snapshots()
       .map((snapshot) => snapshot.docs.length);
 
+  Stream<int> streamReferenceCasesCount() => _tasks
+      .where('isHistoryExample', isEqualTo: true)
+      .snapshots()
+      .map((snapshot) => snapshot.docs.length);
+
   Stream<int> streamApplicationsCount() =>
       _applications.snapshots().map((snapshot) => snapshot.docs.length);
 
@@ -307,6 +312,27 @@ class FirestoreTaskService {
     final demoCustomerEmail = 'demo_customer@queuego.mx';
     final demoRunnerEmail = 'demo_runner@queuego.mx';
     final createdTimes = _generateDemoCreatedTimes(now);
+    const demoCustomerNames = [
+      'Ana G.',
+      'Carlos M.',
+      'Luis R.',
+      'María V.',
+      'Elena T.',
+      'Sofía N.',
+      'Diego C.',
+      'Jorge P.',
+    ];
+    const demoRunnerNames = [
+      'Miguel A.',
+      'José L.',
+      'Andrea P.',
+      'Carmen D.',
+      'Pablo S.',
+      'Lucía R.',
+      'Raúl M.',
+      'Fernanda Q.',
+    ];
+    const demoRatings = [4.7, 4.8, 4.9, 5.0, 4.8, 4.9, 4.7, 5.0];
     final demoTasks = <Map<String, dynamic>>[
       {
         'title': 'SAT Guadalajara',
@@ -409,7 +435,17 @@ class FirestoreTaskService {
     for (var i = 0; i < demoTasks.length; i++) {
       final task = demoTasks[i];
       final createdAt = createdTimes[i];
-      final completedAt = createdAt.add(Duration(minutes: 45 + (i * 17)));
+      final startDateText = (task['startDate'] as String?) ?? _formatDate(createdAt);
+      final startTimeText = (task['startTime'] as String?) ?? '09:00';
+      final startDateTime = _buildDateTimeFromDateTimeText(
+        dateText: startDateText,
+        timeText: startTimeText,
+      );
+      final completedAt = _resolveCompletedAt(
+        createdAt: createdAt,
+        startDateTime: startDateTime,
+        minuteOffset: 60 + (i * 13),
+      );
       final seededPrice = _pickDemoHistoryPriceMxn(
         title: (task['title'] as String?) ?? '',
         random: random,
@@ -438,9 +474,11 @@ class FirestoreTaskService {
         'createdAt': Timestamp.fromDate(createdAt),
         'ownerId': ownerId,
         'ownerEmail': demoCustomerEmail,
+        'customerPublicName': demoCustomerNames[i % demoCustomerNames.length],
         'ownerRole': 'customer',
         'runnerId': 'demo_runner',
         'runnerEmail': demoRunnerEmail,
+        'runnerPublicName': demoRunnerNames[i % demoRunnerNames.length],
         'accepterId': 'demo_runner',
         'arrivedAt': null,
         'progressNote': null,
@@ -452,8 +490,8 @@ class FirestoreTaskService {
         'whatsappNumber': null,
         'handoffCode': _generateHandoffCode(),
         'handoffVerified': true,
-        'ratingFromCustomer': 5.0,
-        'ratingFromRunner': 5.0,
+        'ratingFromCustomer': demoRatings[i % demoRatings.length],
+        'ratingFromRunner': demoRatings[(i + 1) % demoRatings.length],
         'ratedByCustomer': true,
         'ratedByRunner': true,
         'isDemo': true,
@@ -542,10 +580,12 @@ class FirestoreTaskService {
         'handoffVerified': true,
         'ratedByCustomer': true,
         'ratedByRunner': true,
-        'ratingFromCustomer': 5.0,
-        'ratingFromRunner': 5.0,
+        'ratingFromCustomer': 4.8,
+        'ratingFromRunner': 4.9,
         'runnerEmail': 'demo_runner@queuego.mx',
         'ownerEmail': 'demo_customer@queuego.mx',
+        'runnerPublicName': 'Runner verificado',
+        'customerPublicName': 'Cliente verificado',
       }, SetOptions(merge: true));
     }
     await batch.commit();
@@ -1067,6 +1107,27 @@ class FirestoreTaskService {
   }) {
     final base = now.subtract(Duration(days: daysAgo));
     return DateTime(base.year, base.month, base.day, hour, minute);
+  }
+
+  DateTime _buildDateTimeFromDateTimeText({
+    required String dateText,
+    required String timeText,
+  }) {
+    final parsedDate = DateTime.tryParse(dateText);
+    if (parsedDate == null) return DateTime.now();
+    final parts = timeText.split(':');
+    final hour = int.tryParse(parts.first.trim()) ?? 0;
+    final minute = parts.length > 1 ? int.tryParse(parts[1].trim()) ?? 0 : 0;
+    return DateTime(parsedDate.year, parsedDate.month, parsedDate.day, hour, minute);
+  }
+
+  DateTime _resolveCompletedAt({
+    required DateTime createdAt,
+    required DateTime startDateTime,
+    required int minuteOffset,
+  }) {
+    final anchor = createdAt.isAfter(startDateTime) ? createdAt : startDateTime;
+    return anchor.add(Duration(minutes: minuteOffset));
   }
 
   String _normalizeCode(String code) =>

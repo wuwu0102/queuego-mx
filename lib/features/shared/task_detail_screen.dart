@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/i18n/app_strings.dart';
 import '../../core/models/task_item.dart';
 import '../../data/fake_data.dart';
 
@@ -10,7 +11,13 @@ class TaskDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
     final updates = fakeUpdates.where((u) => u.taskId == task.taskId).toList();
+    final lower = '${task.title} ${task.placeName}'.toLowerCase();
+    final isSensitive = lower.contains('sat') ||
+        lower.contains('gobierno') ||
+        lower.contains('hospital') ||
+        lower.contains('imss');
     return Scaffold(
       appBar: AppBar(title: Text(task.title)),
       body: ListView(
@@ -21,6 +28,26 @@ class TaskDetailScreen extends StatelessWidget {
           Text('Runner: ${task.runnerId ?? 'Unassigned'}'),
           Text('Queue position: ${updates.isNotEmpty ? updates.last.queuePosition ?? '-' : '-'}'),
           Text('Estimated remaining: ${updates.isNotEmpty ? updates.last.estimatedRemainingMinutes ?? '-' : '-'} mins'),
+          const SizedBox(height: 10),
+          Text(
+            s.t('globalComplianceNoticeEs'),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          Text(
+            s.t('globalComplianceNoticeZh'),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          if (isSensitive) ...[
+            const SizedBox(height: 4),
+            Text(
+              s.t('institutionRiskNoticeEs'),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            Text(
+              s.t('institutionRiskNoticeZh'),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
           const Divider(height: 28),
           const Text('Timeline', style: TextStyle(fontWeight: FontWeight.bold)),
           ...updates.map(
