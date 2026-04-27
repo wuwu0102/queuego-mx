@@ -14,14 +14,25 @@ import '../../core/services/user_profile_service.dart';
 import '../../core/utils/number_parsing.dart';
 
 class RunnerShell extends StatefulWidget {
-  const RunnerShell({super.key});
+  const RunnerShell({
+    super.key,
+    this.initialTab = 0,
+  });
+
+  final int initialTab;
 
   @override
   State<RunnerShell> createState() => _RunnerShellState();
 }
 
 class _RunnerShellState extends State<RunnerShell> {
-  int current = 0;
+  late int current;
+
+  @override
+  void initState() {
+    super.initState();
+    current = widget.initialTab.clamp(0, 2).toInt();
+  }
 
   void _onDestinationSelected(int value) {
     setState(() => current = value);

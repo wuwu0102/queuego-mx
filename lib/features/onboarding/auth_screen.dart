@@ -9,6 +9,7 @@ import '../../core/services/firestore_task_service.dart';
 import '../../core/services/user_profile_service.dart';
 
 const _googleRedirectAnonymousUidKey = 'google_redirect_previous_anonymous_uid';
+const _googleRedirectPendingKey = 'google_redirect_pending_login';
 
 class LoginModal extends StatefulWidget {
   const LoginModal({super.key});
@@ -59,9 +60,12 @@ class _LoginModalState extends State<LoginModal> {
       final provider = GoogleAuthProvider()
         ..setCustomParameters({'prompt': 'select_account'});
       if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_googleRedirectPendingKey, true);
         if (previousUid.isNotEmpty) {
-          final prefs = await SharedPreferences.getInstance();
           await prefs.setString(_googleRedirectAnonymousUidKey, previousUid);
+        } else {
+          await prefs.remove(_googleRedirectAnonymousUidKey);
         }
         await auth.signInWithRedirect(provider);
         return;
@@ -301,21 +305,27 @@ class _LoginModalState extends State<LoginModal> {
 
 Future<bool> handleGoogleSignInRedirect() async {
   final auth = FirebaseAuth.instance;
+  final prefs = await SharedPreferences.getInstance();
+  final hadPendingRedirect = prefs.getBool(_googleRedirectPendingKey) ?? false;
   final credential = await auth.getRedirectResult();
   final redirectUser = credential.user;
-  if (redirectUser == null) return false;
-  final prefs = await SharedPreferences.getInstance();
+  final currentUser = auth.currentUser;
+  final resolvedUser = redirectUser ?? currentUser;
+  if (resolvedUser == null || !isFormallyLoggedIn(resolvedUser)) {
+    return false;
+  }
   final previousUid = prefs.getString(_googleRedirectAnonymousUidKey) ?? '';
   await prefs.remove(_googleRedirectAnonymousUidKey);
-  if (previousUid.isNotEmpty && previousUid != redirectUser.uid) {
+  await prefs.remove(_googleRedirectPendingKey);
+  if (previousUid.isNotEmpty && previousUid != resolvedUser.uid) {
     await FirestoreTaskService.instance.migrateAnonymousUserData(
       fromAnonymousUid: previousUid,
-      toFormalUid: redirectUser.uid,
-      formalEmail: redirectUser.email,
-      formalDisplayName: redirectUser.displayName,
+      toFormalUid: resolvedUser.uid,
+      formalEmail: resolvedUser.email,
+      formalDisplayName: resolvedUser.displayName,
     );
   }
-  return true;
+  return redirectUser != null || hadPendingRedirect || isFormallyLoggedIn(currentUser);
 }
 
 Future<bool> showLoginModal(BuildContext context) async {

@@ -31,9 +31,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _processGoogleRedirectLogin();
-    });
+    _processGoogleRedirectLogin();
   }
 
   @override
@@ -79,42 +77,79 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _processingRedirect = true;
     try {
       final didRedirectLogin = await handleGoogleSignInRedirect();
-      if (!didRedirectLogin) return;
+      final user = FirebaseAuth.instance.currentUser;
+      final isLoggedIn = isFormallyLoggedIn(user);
+      if (!didRedirectLogin && !isLoggedIn) return;
       final pendingAction = await consumePendingAuthAction();
       if (!mounted) return;
       final s = AppStrings.of(context);
+      await _closeResidualLoginModal();
+      setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(s.t('loginSuccess'))),
       );
       if (pendingAction != null) {
         await _resumePendingAction(pendingAction);
       }
-    } on FirebaseAuthException catch (_) {
+    } on FirebaseAuthException catch (error) {
+      if (!mounted) return;
+      final detail = error.message?.trim();
+      final message = 'Google redirect login failed (${error.code})'
+          '${detail == null || detail.isEmpty ? '' : ': $detail'}';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
       await clearPendingAuthAction();
     } finally {
       _processingRedirect = false;
     }
   }
 
+  Future<void> _closeResidualLoginModal() async {
+    if (!mounted) return;
+    await Navigator.of(context, rootNavigator: true).maybePop();
+  }
+
   Future<void> _resumePendingAction(PendingAuthAction action) async {
     if (!mounted) return;
     switch (action) {
       case PendingAuthAction.publishTask:
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const CustomerShell(initialTab: 0),
+          ),
+        );
+        return;
       case PendingAuthAction.myTasks:
         await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => const CustomerShell(),
+            builder: (_) => const CustomerShell(initialTab: 1),
           ),
         );
         return;
       case PendingAuthAction.takeTask:
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const RunnerShell(initialTab: 0),
+          ),
+        );
+        return;
       case PendingAuthAction.myApplications:
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const RunnerShell(initialTab: 1),
+          ),
+        );
+        return;
       case PendingAuthAction.activeTasks:
         await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => const RunnerShell(),
+            builder: (_) => const RunnerShell(initialTab: 2),
           ),
         );
         return;
