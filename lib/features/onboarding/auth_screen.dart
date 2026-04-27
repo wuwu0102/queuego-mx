@@ -60,14 +60,16 @@ class _LoginModalState extends State<LoginModal> {
       final provider = GoogleAuthProvider()
         ..setCustomParameters({'prompt': 'select_account'});
       if (kIsWeb) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool(_googleRedirectPendingKey, true);
-        if (previousUid.isNotEmpty) {
-          await prefs.setString(_googleRedirectAnonymousUidKey, previousUid);
-        } else {
-          await prefs.remove(_googleRedirectAnonymousUidKey);
-        }
-        await auth.signInWithRedirect(provider);
+        final credential = await auth.signInWithPopup(provider);
+        await _migrateAnonymousDataIfNeeded(
+          previousAnonymousUid: previousUid,
+          currentUser: credential.user,
+        );
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.t('loginSuccess'))),
+        );
+        Navigator.pop(context, true);
         return;
       } else {
         final credential = await auth.signInWithProvider(provider);
@@ -84,8 +86,17 @@ class _LoginModalState extends State<LoginModal> {
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
       final detail = error.message?.trim();
-      final message = '${s.t('authUnknownError')} (${error.code})'
+      final errorWithDetail = '(${error.code})'
           '${detail == null || detail.isEmpty ? '' : ': $detail'}';
+      const popupRelatedErrors = {
+        'popup-blocked',
+        'popup-closed-by-user',
+        'cancelled-popup-request',
+        'web-context-cancelled',
+      };
+      final message = popupRelatedErrors.contains(error.code)
+          ? 'No se pudo abrir Google. Permite ventanas emergentes o abre esta página en Chrome/Safari.\n$errorWithDetail'
+          : '${s.t('authUnknownError')} $errorWithDetail';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
