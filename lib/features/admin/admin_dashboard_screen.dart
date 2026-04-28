@@ -223,10 +223,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     label: const Text('English'),
                     onPressed: () => widget.onLocaleChanged(const Locale('en')),
                   ),
-                  ActionChip(
-                    label: const Text('繁中'),
-                    onPressed: () => widget.onLocaleChanged(const Locale('zh', 'TW')),
-                  ),
                 ],
               ),
               if (showDemoControls) ...[

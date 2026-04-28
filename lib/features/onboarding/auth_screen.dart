@@ -197,7 +197,7 @@ class _LoginModalState extends State<LoginModal> {
       if (notifyLoginSuccess) {
         final user = credential.user;
         final loginMessage = isAdminUser(user)
-            ? '管理員登入成功 / Admin login successful / Administrador conectado'
+            ? 'Administrador conectado'
             : s.t('loginSuccess');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(loginMessage)),

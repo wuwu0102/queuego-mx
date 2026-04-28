@@ -25,16 +25,12 @@ class TaskDetailScreen extends StatelessWidget {
         children: [
           Text(task.description),
           const SizedBox(height: 12),
-          Text('Runner: ${task.runnerId ?? 'Unassigned'}'),
-          Text('Queue position: ${updates.isNotEmpty ? updates.last.queuePosition ?? '-' : '-'}'),
-          Text('Estimated remaining: ${updates.isNotEmpty ? updates.last.estimatedRemainingMinutes ?? '-' : '-'} mins'),
+          Text('Runner: ${task.runnerId ?? 'Sin asignar'}'),
+          Text('Posición en fila: ${updates.isNotEmpty ? updates.last.queuePosition ?? '-' : '-'}'),
+          Text('Tiempo restante estimado: ${updates.isNotEmpty ? updates.last.estimatedRemainingMinutes ?? '-' : '-'} min'),
           const SizedBox(height: 10),
           Text(
             s.t('globalComplianceNoticeEs'),
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          Text(
-            s.t('globalComplianceNoticeZh'),
             style: Theme.of(context).textTheme.bodySmall,
           ),
           if (isSensitive) ...[
@@ -43,13 +39,9 @@ class TaskDetailScreen extends StatelessWidget {
               s.t('institutionRiskNoticeEs'),
               style: Theme.of(context).textTheme.bodySmall,
             ),
-            Text(
-              s.t('institutionRiskNoticeZh'),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
           ],
           const Divider(height: 28),
-          const Text('Timeline', style: TextStyle(fontWeight: FontWeight.bold)),
+          const Text('Línea de tiempo', style: TextStyle(fontWeight: FontWeight.bold)),
           ...updates.map(
             (u) => Card(
               child: ListTile(
@@ -63,18 +55,18 @@ class TaskDetailScreen extends StatelessWidget {
           Wrap(
             spacing: 8,
             children: [
-              FilledButton(onPressed: () {}, child: const Text('Confirm complete')),
-              OutlinedButton(onPressed: () {}, child: const Text('Cancel task')),
+              FilledButton(onPressed: () {}, child: const Text('Confirmar finalización')),
+              OutlinedButton(onPressed: () {}, child: const Text('Cancelar tarea')),
               OutlinedButton(
                 onPressed: () => showDialog<void>(
                   context: context,
                   builder: (_) => AlertDialog(
-                    title: const Text('Report / Dispute'),
-                    content: const Text('UI placeholder for report/dispute submission and admin review workflow.'),
+                    title: const Text('Reporte / Disputa'),
+                    content: const Text('Espacio temporal para reportes/disputas y revisión administrativa.'),
                     actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
                   ),
                 ),
-                child: const Text('Report issue'),
+                child: const Text('Reportar problema'),
               ),
             ],
           ),

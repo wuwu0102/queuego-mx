@@ -8,12 +8,11 @@ class AppStrings {
   static const supportedLocales = [
     Locale('es', 'MX'),
     Locale('en'),
-    Locale('zh', 'TW'),
   ];
 
   static AppStrings of(BuildContext context) {
     return Localizations.of<AppStrings>(context, AppStrings) ??
-        AppStrings(const Locale('en'));
+        AppStrings(const Locale('es', 'MX'));
   }
 
   static const Map<String, Map<String, String>> _localized = {
@@ -57,7 +56,7 @@ class AppStrings {
       'urgencyUrgent': 'Urgente',
       'basePriceMxnInput': 'Base del servicio (MXN)',
       'totalPriceMxnInput': 'Precio que quieres pagar (MXN)',
-      'suggestedPriceLabel': '你願意支付的價格（可議價）',
+      'suggestedPriceLabel': 'Precio que estás dispuesto(a) a pagar (negociable)',
       'minimumPriceHint': 'Ingresa el precio que quieres ofrecer.',
       'minimumPriceError': 'El precio no puede ser menor a 250 MXN.',
       'priceAutoRoundedHint': 'Los precios se ajustan automáticamente a múltiplos de 10 MXN.',
@@ -129,7 +128,7 @@ class AppStrings {
       'runnerNearlyThere': 'Estoy por llegar al turno',
       'almost_ready': 'Estoy por llegar al turno',
       'runnerNearlyThereSent': 'Aviso enviado para que el cliente se prepare.',
-      'waitingExceeded': '已超過預估到場時間，請雙方協調',
+      'waitingExceeded': 'Se superó el tiempo estimado de llegada. Coordinen entre ambas partes.',
       'handoffCode': 'Código de entrega',
       'handoff_code': 'Código de entrega',
       'handoffCardCode': 'Código de entrega: {code}',
@@ -233,12 +232,12 @@ class AppStrings {
       'registerCta': 'Registrarse',
       'continueBrowsing': 'Seguir navegando',
       'formalLoginRequired': 'Debes iniciar sesión con Email para esta acción.',
-      'legacyAnonymousTask': '未綁定正式帳號的舊任務',
+      'legacyAnonymousTask': 'Tarea heredada sin vinculación de cuenta formal',
       'adminInternalOnly': 'Panel de administración',
       'createDemoTasks': 'Crear tareas demo',
       'deleteDemoTasks': 'Borrar tareas demo',
       'regenerateDemoPrices': 'Re-generar precios demo',
-      'demoTasksExistConfirm': 'Ya existen tareas demo. ¿Quieres crear más?',
+      'demoTasksExistConfirm': 'Demo tasks already exist. Do you want to create more?',
       'demoTasksCreated': 'Se crearon {count} tareas demo.',
       'demoTasksDeleted': 'Se borraron {count} tareas demo.',
       'demoPricesRegenerated': 'Se re-generaron precios en {count} tareas demo.',
@@ -265,15 +264,15 @@ class AppStrings {
       'globalComplianceNoticeEs':
           'QueueGo MX solo conecta usuarios para apoyo logístico en filas y esperas. No realizamos trámites oficiales, representación legal, decisiones médicas ni manejo de documentos sensibles.',
       'globalComplianceNoticeZh':
-          'QueueGo MX 僅媒合排隊與等待等現場協助，不代辦官方手續、不提供法律代表、不做醫療決策、不處理敏感文件。',
+          'QueueGo MX solo conecta usuarios para apoyo logístico en filas y esperas. No realizamos trámites oficiales, representación legal, decisiones médicas ni manejo de documentos sensibles.',
       'publishRestrictedNoticeEs':
           'No compartas contraseñas, datos bancarios, documentos sensibles ni información médica. Para trámites oficiales, el cliente debe presentarse personalmente cuando sea requerido.',
       'publishRestrictedNoticeZh':
-          '請勿分享密碼、銀行資料、敏感文件或醫療資訊。官方手續如需本人到場，客戶仍須親自出席。',
+          'No compartas contraseñas, datos bancarios, documentos sensibles ni información médica. Para trámites oficiales, el cliente debe presentarse personalmente cuando sea requerido.',
       'institutionRiskNoticeEs':
           'Este servicio es solo para guardar lugar o apoyar en fila. No sustituye la presencia del titular cuando la institución lo requiera.',
       'institutionRiskNoticeZh':
-          '此服務僅協助排隊或保留位置，若機構要求本人到場，不能取代本人出席。',
+          'Este servicio es solo para guardar lugar o apoyar en fila. No sustituye la presencia del titular cuando la institución lo requiera.',
       'adminSuspiciousKeywords': 'Indicadores de riesgo detectados',
     },
     'en': {
@@ -316,7 +315,7 @@ class AppStrings {
       'urgencyUrgent': 'Urgent',
       'basePriceMxnInput': 'Service base (MXN)',
       'totalPriceMxnInput': 'Price you are willing to pay (MXN)',
-      'suggestedPriceLabel': '你願意支付的價格（可議價）',
+      'suggestedPriceLabel': 'Precio que estás dispuesto(a) a pagar (negociable)',
       'minimumPriceHint': 'Enter the amount you are willing to offer.',
       'minimumPriceError': 'Price cannot be lower than 250 MXN.',
       'priceAutoRoundedHint': 'Prices are automatically rounded to the nearest 10 MXN.',
@@ -388,7 +387,7 @@ class AppStrings {
       'runnerNearlyThere': 'I am almost at the counter',
       'almost_ready': 'I am almost at the counter',
       'runnerNearlyThereSent': 'Customer prep reminder sent.',
-      'waitingExceeded': '已超過預估到場時間，請雙方協調',
+      'waitingExceeded': 'Se superó el tiempo estimado de llegada. Coordinen entre ambas partes.',
       'handoffCode': 'Handoff code',
       'handoff_code': 'Handoff code',
       'handoffCardCode': 'Handoff code: {code}',
@@ -497,7 +496,7 @@ class AppStrings {
       'createDemoTasks': 'Create demo tasks',
       'deleteDemoTasks': 'Delete demo tasks',
       'regenerateDemoPrices': 'Regenerate demo prices',
-      'demoTasksExistConfirm': 'Ya existen tareas demo. ¿Quieres crear más?',
+      'demoTasksExistConfirm': 'Demo tasks already exist. Do you want to create more?',
       'demoTasksCreated': 'Created {count} demo tasks.',
       'demoTasksDeleted': 'Deleted {count} demo tasks.',
       'demoPricesRegenerated': 'Regenerated prices for {count} demo tasks.',
@@ -524,15 +523,15 @@ class AppStrings {
       'globalComplianceNoticeEs':
           'QueueGo MX solo conecta usuarios para apoyo logístico en filas y esperas. No realizamos trámites oficiales, representación legal, decisiones médicas ni manejo de documentos sensibles.',
       'globalComplianceNoticeZh':
-          'QueueGo MX 僅媒合排隊與等待等現場協助，不代辦官方手續、不提供法律代表、不做醫療決策、不處理敏感文件。',
+          'QueueGo MX only connects users for logistical support in lines and waiting situations. We do not provide official procedures, legal representation, medical decisions, or handling of sensitive documents.',
       'publishRestrictedNoticeEs':
           'No compartas contraseñas, datos bancarios, documentos sensibles ni información médica. Para trámites oficiales, el cliente debe presentarse personalmente cuando sea requerido.',
       'publishRestrictedNoticeZh':
-          '請勿分享密碼、銀行資料、敏感文件或醫療資訊。官方手續如需本人到場，客戶仍須親自出席。',
+          'Do not share passwords, banking data, sensitive documents, or medical information. For official procedures, the customer must appear in person when required.',
       'institutionRiskNoticeEs':
           'Este servicio es solo para guardar lugar o apoyar en fila. No sustituye la presencia del titular cuando la institución lo requiera.',
       'institutionRiskNoticeZh':
-          '此服務僅協助排隊或保留位置，若機構要求本人到場，不能取代本人出席。',
+          'This service is only to hold a place or support in line. It does not replace the account holder when the institution requires personal presence.',
       'adminSuspiciousKeywords': 'Suspicious risk indicators',
     },
     'zh-TW': {
@@ -574,7 +573,7 @@ class AppStrings {
       'urgencyUrgent': '緊急',
       'basePriceMxnInput': '服務基礎費（MXN）',
       'totalPriceMxnInput': '你願意支付的價格（MXN）',
-      'suggestedPriceLabel': '你願意支付的價格（可議價）',
+      'suggestedPriceLabel': 'Precio que estás dispuesto(a) a pagar (negociable)',
       'minimumPriceHint': '請輸入你願意提供的價格。',
       'minimumPriceError': '價格不可低於 250 MXN。',
       'priceAutoRoundedHint': '價格會自動調整為 10 元為單位',
@@ -645,7 +644,7 @@ class AppStrings {
       'runnerNearlyThere': '我快排到了',
       'almost_ready': '我快排到了',
       'runnerNearlyThereSent': '已通知對方準備到場。',
-      'waitingExceeded': '已超過預估到場時間，請雙方協調',
+      'waitingExceeded': 'Se superó el tiempo estimado de llegada. Coordinen entre ambas partes.',
       'handoffCode': '交接碼',
       'handoff_code': '交接碼',
       'handoffCardCode': '交接碼：{code}',
@@ -744,12 +743,12 @@ class AppStrings {
       'registerCta': '註冊',
       'continueBrowsing': '繼續瀏覽',
       'formalLoginRequired': '此操作需要先使用 Email/Password 正式登入。',
-      'legacyAnonymousTask': '未綁定正式帳號的舊任務',
+      'legacyAnonymousTask': 'Tarea heredada sin vinculación de cuenta formal',
       'adminInternalOnly': '管理面板',
       'createDemoTasks': '建立示範任務',
       'deleteDemoTasks': '刪除示範任務',
       'regenerateDemoPrices': '重新生成示範價格',
-      'demoTasksExistConfirm': 'Ya existen tareas demo. ¿Quieres crear más?',
+      'demoTasksExistConfirm': 'Demo tasks already exist. Do you want to create more?',
       'demoTasksCreated': '已建立 {count} 筆示範任務。',
       'demoTasksDeleted': '已刪除 {count} 筆示範任務。',
       'demoPricesRegenerated': '已重新生成 {count} 筆示範任務價格。',
