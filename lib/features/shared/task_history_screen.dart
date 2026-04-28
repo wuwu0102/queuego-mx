@@ -108,10 +108,6 @@ class _HistoryTaskCard extends StatelessWidget {
               s.t('globalComplianceNoticeEs'),
               style: Theme.of(context).textTheme.bodySmall,
             ),
-            Text(
-              s.t('globalComplianceNoticeZh'),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
           ],
         ),
       ),

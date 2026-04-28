@@ -160,7 +160,6 @@ class _OpenTaskCard extends StatelessWidget {
             if (_requiresExtraInstitutionReminder(task)) ...[
               const SizedBox(height: 4),
               Text(s.t('institutionRiskNoticeEs'), style: Theme.of(context).textTheme.bodySmall),
-              Text(s.t('institutionRiskNoticeZh'), style: Theme.of(context).textTheme.bodySmall),
             ],
             const SizedBox(height: 8),
             if (isGuest)
@@ -657,10 +656,8 @@ class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
             Text('${s.t('historyTimeSaved')}: ${(task.workHours + task.waitHours).toStringAsFixed(1)} h'),
             if (_requiresExtraInstitutionReminder(task)) ...[
               Text(s.t('institutionRiskNoticeEs'), style: Theme.of(context).textTheme.bodySmall),
-              Text(s.t('institutionRiskNoticeZh'), style: Theme.of(context).textTheme.bodySmall),
             ] else ...[
               Text(s.t('globalComplianceNoticeEs'), style: Theme.of(context).textTheme.bodySmall),
-              Text(s.t('globalComplianceNoticeZh'), style: Theme.of(context).textTheme.bodySmall),
             ],
             Text('${s.t('status')}: ${s.statusLabel(task.status)}'),
             _TrustScorePanel(userId: task.ownerId),

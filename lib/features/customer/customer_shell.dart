@@ -330,10 +330,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   s.t('publishRestrictedNoticeEs'),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
-                Text(
-                  s.t('publishRestrictedNoticeZh'),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
@@ -348,10 +344,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 const SizedBox(height: 10),
                 Text(
                   s.t('globalComplianceNoticeEs'),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                Text(
-                  s.t('globalComplianceNoticeZh'),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -482,12 +474,6 @@ class _TaskCard extends StatelessWidget {
               _requiresExtraInstitutionReminder(task)
                   ? s.t('institutionRiskNoticeEs')
                   : s.t('globalComplianceNoticeEs'),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            Text(
-              _requiresExtraInstitutionReminder(task)
-                  ? s.t('institutionRiskNoticeZh')
-                  : s.t('globalComplianceNoticeZh'),
               style: Theme.of(context).textTheme.bodySmall,
             ),
             if ((task.accepterId ?? '').isNotEmpty)

@@ -57,7 +57,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            '管理員登入成功 / Admin login successful / Administrador conectado',
+            'Administrador conectado',
           ),
         ),
       );
@@ -160,7 +160,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final languageCode = Localizations.localeOf(context).languageCode;
     final title = switch (languageCode) {
       'en' => 'What do you want to do in QueueGo?',
-      'zh' when isAdminUser(FirebaseAuth.instance.currentUser) => '你想在 QueueGo 做什麼？',
       _ => '¿Qué quieres hacer en QueueGo?',
     };
     return showDialog<String>(
@@ -169,9 +168,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       builder: (_) => AlertDialog(
         title: Text(title),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, 'customer'), child: const Text('Publicar tareas / 發任務 / Post tasks')),
-          TextButton(onPressed: () => Navigator.pop(context, 'runner'), child: const Text('Tomar tareas / 接任務 / Take tasks')),
-          FilledButton(onPressed: () => Navigator.pop(context, 'both'), child: const Text('Ambas / 兩者都要 / Both')),
+          TextButton(onPressed: () => Navigator.pop(context, 'customer'), child: const Text('Publicar tareas')),
+          TextButton(onPressed: () => Navigator.pop(context, 'runner'), child: const Text('Tomar tareas')),
+          FilledButton(onPressed: () => Navigator.pop(context, 'both'), child: const Text('Ambas')),
         ],
       ),
     );
@@ -265,10 +264,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               s.t('globalComplianceNoticeEs'),
               style: Theme.of(context).textTheme.bodySmall,
             ),
-            Text(
-              s.t('globalComplianceNoticeZh'),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
           ],
         ),
       );
@@ -340,11 +335,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 label: const Text('English'),
                 onPressed: () => widget.onLocaleChanged(const Locale('en')),
               ),
-              if (showAdmin)
-                ActionChip(
-                  label: const Text('繁中'),
-                  onPressed: () => widget.onLocaleChanged(const Locale('zh', 'TW')),
-                ),
             ],
           ),
           const SizedBox(height: 20),
@@ -376,10 +366,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 6),
           Text(
             s.t('globalComplianceNoticeEs'),
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          Text(
-            s.t('globalComplianceNoticeZh'),
             style: Theme.of(context).textTheme.bodySmall,
           ),
           if (showAdmin)
@@ -453,24 +439,47 @@ class _RoleSettingsButton extends StatelessWidget {
       stream: UserProfileService.instance.streamProfile(uid),
       builder: (context, snapshot) {
         final role = snapshot.data?.role ?? 'both';
+        final languageCode = Localizations.localeOf(context).languageCode;
+        final roleLabel = switch (languageCode) {
+          'en' => 'Role: $role',
+          _ => 'Rol: $role',
+        };
         return TextButton(
           onPressed: () => _showRolePicker(context, uid),
-          child: Text('Role: $role'),
+          child: Text(roleLabel),
         );
       },
     );
   }
 
   Future<void> _showRolePicker(BuildContext context, String uid) async {
+    final languageCode = Localizations.localeOf(context).languageCode;
+    final title = switch (languageCode) {
+      'en' => 'Switch role',
+      _ => 'Cambiar rol',
+    };
+    final content = switch (languageCode) {
+      'en' => 'Choose your active role in QueueGo.',
+      _ => 'Elige tu rol activo en QueueGo.',
+    };
     final role = await showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Switch role'),
-        content: const Text('Choose your active role in QueueGo.'),
+        title: Text(title),
+        content: Text(content),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, 'customer'), child: const Text('customer')),
-          TextButton(onPressed: () => Navigator.pop(context, 'runner'), child: const Text('runner')),
-          FilledButton(onPressed: () => Navigator.pop(context, 'both'), child: const Text('both')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'customer'),
+            child: Text(languageCode == 'en' ? 'Customer' : 'Cliente'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'runner'),
+            child: const Text('Runner'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, 'both'),
+            child: Text(languageCode == 'en' ? 'Both' : 'Ambos'),
+          ),
         ],
       ),
     );
