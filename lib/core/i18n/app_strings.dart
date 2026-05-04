@@ -789,10 +789,13 @@ class AppStrings {
   };
 
   String t(String key) {
-    final tag = locale.countryCode == null
+    final localeKey = locale.countryCode == null
         ? locale.languageCode
         : '${locale.languageCode}-${locale.countryCode}';
-    return _localized[tag]?[key] ?? _localized['es-MX']![key] ?? key;
+    return _localized[localeKey]?[key] ??
+        _localized[locale.languageCode]?[key] ??
+        _localized['es-MX']?[key] ??
+        key;
   }
 
   String statusLabel(String statusKey) => t('status_$statusKey');
