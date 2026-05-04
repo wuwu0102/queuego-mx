@@ -12,6 +12,8 @@ import '../../core/services/firestore_task_service.dart';
 import '../../core/services/auth_gate.dart';
 import '../../core/utils/number_parsing.dart';
 
+const String projectContactPhone = '';
+
 class CustomerShell extends StatefulWidget {
   const CustomerShell({
     super.key,
@@ -572,7 +574,8 @@ class _TaskCard extends StatelessWidget {
       status == 'accepted' || status == 'arrived' || status == 'waiting_for_customer';
 
   bool _showWhatsAppButton(String status) =>
-      status == 'accepted' || status == 'arrived' || status == 'waiting_for_customer';
+      projectContactPhone.trim().isNotEmpty &&
+      (status == 'accepted' || status == 'arrived' || status == 'waiting_for_customer');
 
   bool _showHandoffCode(String status, bool isOwner) =>
       isOwner &&

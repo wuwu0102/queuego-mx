@@ -13,6 +13,8 @@ import '../../core/services/firestore_task_service.dart';
 import '../../core/services/user_profile_service.dart';
 import '../../core/utils/number_parsing.dart';
 
+const String projectContactPhone = '';
+
 class RunnerShell extends StatefulWidget {
   const RunnerShell({
     super.key,
@@ -634,7 +636,8 @@ class _RunnerActiveTaskCardState extends State<_RunnerActiveTaskCard> {
         'accepted',
         'arrived',
         'waiting_for_customer',
-      ].contains(widget.task.status);
+      ].contains(widget.task.status) &&
+      projectContactPhone.trim().isNotEmpty;
 
   @override
   Widget build(BuildContext context) {

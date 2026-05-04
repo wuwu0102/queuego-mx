@@ -23,7 +23,9 @@ class TaskHistoryScreen extends StatelessWidget {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-          final tasks = snapshot.data!;
+          final tasks = snapshot.data!
+              .where((task) => !task.isDemo && !task.isHistoryExample)
+              .toList();
           if (tasks.isEmpty) {
             return Center(child: Text(s.t('noTasksYet')));
           }
@@ -60,7 +62,6 @@ class _HistoryTaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
-    final isReference = task.isDemo || task.isHistoryExample;
     final timeSaved = (task.workHours + task.waitHours).toStringAsFixed(1);
     final customerName = task.customerPublicName?.trim().isNotEmpty == true
         ? task.customerPublicName!
@@ -77,9 +78,7 @@ class _HistoryTaskCard extends StatelessWidget {
           children: [
             Text(task.title, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 6),
-            Text(
-              '${s.t('status')}: ${isReference ? s.t('historyReferenceCase') : s.t('historyCompletedTask')}',
-            ),
+            Text('${s.t('status')}: ${s.t('historyCompletedTask')}'),
             Text('Cliente: $customerName'),
             Text('Runner: $runnerName'),
             Text('${s.t('locationLabel')}: ${task.location}'),
@@ -88,9 +87,7 @@ class _HistoryTaskCard extends StatelessWidget {
               Text('${s.t('instructionsLabel')}: ${task.instructions}'),
             const SizedBox(height: 4),
             _UrgencyBadge(level: task.urgencyLevel),
-            Text(
-              '${isReference ? s.t('historyReferencePayment') : s.t('historyPricePaid')}: ${roundToTen(task.price).toStringAsFixed(0)} MXN',
-            ),
+            Text('${s.t('historyPricePaid')}: ${roundToTen(task.price).toStringAsFixed(0)} MXN'),
             Text('${s.t('startDate')}: ${task.startDate} ${task.startTime}'),
             Text('${s.t('historyTaskDuration')}: ${task.estimatedHours.toStringAsFixed(1)} h'),
             Text('${s.t('historyWaitDuration')}: ${task.waitHours.toStringAsFixed(1)} h'),
