@@ -522,11 +522,18 @@ class _HomeInfoSection extends StatelessWidget {
         children: [
           Text('Seguridad y recomendaciones', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 4),
-          const Text('• Proyecto piloto en Guadalajara. Coordina siempre por la plataforma.'),
+          const Text('QueueGo MX es un proyecto piloto que conecta usuarios con Runners disponibles para apoyo en filas o esperas cortas.
+
+Recomendaciones:
+- Acuerda claramente lugar, horario y pago antes de iniciar.
+- No compartas información sensible si no es necesario.
+- Evita pagos completos por adelantado con personas desconocidas.
+- Reporta solicitudes sospechosas o abusivas.
+- QueueGo MX no es una entidad oficial ni ofrece representación legal, médica o financiera.'),
           const SizedBox(height: 10),
           Text('Texto para compartir', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 4),
-          const Text('QueueGo MX: publica una tarea o únete como Runner en Guadalajara.'),
+          const Text('QueueGo MX: publica una solicitud o únete como Runner en Guadalajara.'),
           const SizedBox(height: 10),
           Text('Precios de referencia', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 4),
@@ -535,7 +542,7 @@ class _HomeInfoSection extends StatelessWidget {
             builder: (context, snapshot) {
               final completed = snapshot.data ?? 0;
               if (completed <= 0) {
-                return const Text('Aún no hay tareas completadas.');
+                return const Text('Aún no hay solicitudes completadas.');
               }
               return Text('Tareas completadas registradas: $completed');
             },

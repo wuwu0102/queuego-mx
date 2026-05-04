@@ -43,10 +43,10 @@ class FirestoreTaskService {
     'Paquetería DHL': [300, 400],
     'Banco BBVA': [350, 500],
     'Costco Guadalajara': [300, 400],
-    'SAT Guadalajara': [700, 900],
+    'Servicio con turno Guadalajara': [700, 900],
     'IMSS Clínica': [700, 900],
     'Hospital privado': [700, 900],
-    'Oficina de gobierno': [500, 900],
+    'Centro de servicio con fila': [500, 900],
     'Concierto / Evento': [900, 1200],
   };
 
@@ -335,9 +335,9 @@ class FirestoreTaskService {
     const demoRatings = [4.7, 4.8, 4.9, 5.0, 4.8, 4.9, 4.7, 5.0];
     final demoTasks = <Map<String, dynamic>>[
       {
-        'title': 'SAT Guadalajara',
-        'location': 'SAT Guadalajara Centro',
-        'note': 'Fila para trámite fiscal presencial con validación de documentos.',
+        'title': 'Servicio con turno Guadalajara',
+        'location': 'Servicio con turno Guadalajara Centro',
+        'note': 'Fila para servicio presencial con información necesaria.',
         'instructions': 'Formarse desde la entrada principal y avisar cuando falten 15 turnos.',
         'startDate': _formatDate(now.subtract(const Duration(days: 2))),
         'startTime': '11:07',
@@ -361,7 +361,7 @@ class FirestoreTaskService {
       {
         'title': 'Banco BBVA',
         'location': 'Sucursal BBVA Chapalita',
-        'note': 'Asistencia para fila de caja y firma de documentación bancaria.',
+        'note': 'Apoyo para fila y seguimiento de turno en sitio.',
         'instructions': 'Mantener lugar en ventanilla y confirmar tiempo de atención estimado.',
         'startDate': _formatDate(now.subtract(const Duration(days: 4))),
         'startTime': '09:34',
@@ -407,10 +407,10 @@ class FirestoreTaskService {
         'urgencyLevel': 'priority',
       },
       {
-        'title': 'Oficina de gobierno',
+        'title': 'Centro de servicio con fila',
         'location': 'Recaudadora Estatal Guadalajara',
-        'note': 'Fila para trámite administrativo con validación en ventanilla oficial.',
-        'instructions': 'Permanecer en fila de trámites y avisar cuando queden 10 personas.',
+        'note': 'Fila para servicio administrativo presencial.',
+        'instructions': 'Permanecer en fila y avisar cuando queden 10 personas.',
         'startDate': _formatDate(now.subtract(const Duration(days: 12))),
         'startTime': '12:26',
         'basePrice': 210.0,
@@ -421,7 +421,7 @@ class FirestoreTaskService {
       {
         'title': 'Paquetería DHL',
         'location': 'Centro de envíos DHL Providencia',
-        'note': 'Apoyo para fila de envío prioritario con documentación física.',
+        'note': 'Apoyo para fila de envío prioritario con información necesaria.',
         'instructions': 'Tomar turno en mostrador y avisar cuando el folio esté próximo a pantalla.',
         'startDate': _formatDate(now.subtract(const Duration(days: 13))),
         'startTime': '16:48',
