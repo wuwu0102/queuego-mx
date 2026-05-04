@@ -242,7 +242,7 @@ class _LoginModalState extends State<LoginModal> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Continúa para publicar o tomar tareas',
+                'Continúa para publicar o tomar solicitudes',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 6),

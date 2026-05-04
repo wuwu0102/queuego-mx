@@ -25,10 +25,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     'ine',
     'contraseña',
     'tarjeta',
-    'banco clave',
+    'lugar con fila clave',
     'vender turno',
     'cita oficial',
-    'documento original',
+    'información necesaria',
   ];
 
   bool _isSeeding = false;

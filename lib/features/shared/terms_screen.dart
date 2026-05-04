@@ -35,13 +35,13 @@ class TermsScreen extends StatelessWidget {
         _TermsSection(
           title: '1) What QueueGo MX is',
           paragraphs: [
-            'QueueGo MX is a matching platform connecting people who need help with lines, procedures, or waiting times and people available to provide in-person support.',
+            'QueueGo MX is a matching platform connecting people who need support with lines or short waiting times and people available to provide in-person support.',
           ],
         ),
         _TermsSection(
           title: '2) We are not an institution',
           paragraphs: [
-            'QueueGo MX does not represent any public or private institution, bank, hospital, school, company, or authority.',
+            'QueueGo MX does not provide legal, medical, financial, government, or official representation services.',
           ],
         ),
         _TermsSection(
@@ -60,7 +60,7 @@ class TermsScreen extends StatelessWidget {
           title: '5) Prohibited activities',
           bullets: [
             'Impersonating identity',
-            'Selling official turns when prohibited',
+            'Selling turns when prohibited',
             'Skipping lines',
             'Manipulating appointment systems',
             'Illegal or fraudulent activities',
@@ -89,13 +89,13 @@ class TermsScreen extends StatelessWidget {
       _TermsSection(
         title: '1️⃣ Qué es QueueGo MX',
         paragraphs: [
-          'QueueGo MX es una plataforma de conexión entre personas que necesitan apoyo en filas, trámites o esperas y personas disponibles para brindar apoyo presencial.',
+          'QueueGo MX es una plataforma piloto que conecta personas que necesitan apoyo en filas o esperas cortas con personas disponibles para brindar apoyo presencial.',
         ],
       ),
       _TermsSection(
         title: '2️⃣ No somos una institución',
         paragraphs: [
-          'QueueGo MX no representa a ninguna institución pública, privada, banco, hospital, escuela, empresa ni autoridad.',
+          'QueueGo MX no ofrece servicios de representación legal, médica, financiera, gubernamental ni oficial.',
         ],
       ),
       _TermsSection(
@@ -114,7 +114,7 @@ class TermsScreen extends StatelessWidget {
         title: '5️⃣ Actividades prohibidas',
         bullets: [
           'Suplantar identidad',
-          'Vender turnos oficiales cuando esté prohibido',
+          'Vender turnos cuando esté prohibido',
           'Saltarse filas',
           'Manipular sistemas de citas',
           'Actividades ilegales o fraudulentas',

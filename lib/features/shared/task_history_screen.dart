@@ -69,6 +69,13 @@ class _HistoryTaskCard extends StatelessWidget {
     final runnerName = task.runnerPublicName?.trim().isNotEmpty == true
         ? task.runnerPublicName!
         : 'Runner verificado';
+    String sanitizeText(String input) {
+      return input
+          .replaceAll(RegExp('bancos?', caseSensitive: false), 'lugar con fila')
+          .replaceAll(RegExp('trámites?', caseSensitive: false), 'espera')
+          .replaceAll(RegExp('sat', caseSensitive: false), 'servicio con turno')
+          .replaceAll(RegExp('documentos?', caseSensitive: false), 'información necesaria');
+    }
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: Padding(
@@ -76,15 +83,15 @@ class _HistoryTaskCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(task.title, style: Theme.of(context).textTheme.titleMedium),
+            Text(sanitizeText(task.title), style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 6),
             Text('${s.t('status')}: ${s.t('historyCompletedTask')}'),
             Text('Cliente: $customerName'),
             Text('Runner: $runnerName'),
-            Text('${s.t('locationLabel')}: ${task.location}'),
-            Text('${s.t('onsiteInstructions')}: ${task.note}'),
+            Text('${s.t('locationLabel')}: ${sanitizeText(task.location)}'),
+            Text('${s.t('onsiteInstructions')}: ${sanitizeText(task.note)}'),
             if (task.instructions.trim().isNotEmpty)
-              Text('${s.t('instructionsLabel')}: ${task.instructions}'),
+              Text('${s.t('instructionsLabel')}: ${sanitizeText(task.instructions)}'),
             const SizedBox(height: 4),
             _UrgencyBadge(level: task.urgencyLevel),
             Text('${s.t('historyPricePaid')}: ${roundToTen(task.price).toStringAsFixed(0)} MXN'),

@@ -1,6 +1,6 @@
 # queuego_mx
 
-QueueGo MX is a cross-platform Flutter MVP for **Queue Assistance / Asistencia en fila / 現場協助** services in Mexico. It matches Customers who need on-site waiting or line support with Runners who can complete legal, compliant on-site assistance tasks.
+QueueGo MX is a cross-platform Flutter MVP and pilot platform for **queue and short-wait support in Guadalajara**. It matches Customers who need on-site waiting or line support with Runners who can handle simple, non-sensitive queue or short-wait support requests.
 
 ## Project Purpose
 - Build an MVP similar in marketplace flow to Uber + TaskRabbit (but for on-site queue assistance only).
