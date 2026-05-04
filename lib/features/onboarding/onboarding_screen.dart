@@ -11,7 +11,6 @@ import '../admin/admin_dashboard_screen.dart';
 import '../customer/customer_shell.dart';
 import '../runner/runner_shell.dart';
 import '../shared/privacy_screen.dart';
-import '../shared/task_history_screen.dart';
 import '../shared/terms_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -247,23 +246,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               onTap: () => _openRunnerFlow(context),
             ),
             _HomeActionCard(
-              icon: Icons.history_outlined,
+              icon: Icons.list_alt_outlined,
               title: s.t('completedHistoryTitle'),
               subtitle: s.t('completedHistorySubtitle'),
-              onTap: () => _openHistoryFlow(context),
+              onTap: () => _openRunnerFlow(context),
             ),
             const SizedBox(height: 8),
-            const _HomeTrustSection(),
-            const SizedBox(height: 12),
-            Text(
-              s.t('homeSafetyNotice'),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              s.t('globalComplianceNoticeEs'),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            const _HomeInfoSection(),
           ],
         ),
       );
@@ -351,23 +340,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             onTap: () => _openRunnerFlow(context),
           ),
           _HomeActionCard(
-            icon: Icons.history_outlined,
+            icon: Icons.list_alt_outlined,
             title: s.t('completedHistoryTitle'),
             subtitle: s.t('completedHistorySubtitle'),
-            onTap: () => _openHistoryFlow(context),
+            onTap: () => _openRunnerFlow(context),
           ),
           const SizedBox(height: 8),
-          const _HomeTrustSection(),
-          const SizedBox(height: 12),
-          Text(
-            s.t('homeSafetyNotice'),
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            s.t('globalComplianceNoticeEs'),
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          const _HomeInfoSection(),
           if (showAdmin)
             _HomeActionCard(
               icon: Icons.admin_panel_settings_outlined,
@@ -400,15 +379,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => const RunnerShell(),
-      ),
-    );
-  }
-
-  Future<void> _openHistoryFlow(BuildContext context) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const TaskHistoryScreen(),
       ),
     );
   }
@@ -537,67 +507,41 @@ class _HomeActionCard extends StatelessWidget {
   }
 }
 
-class _HomeTrustSection extends StatelessWidget {
-  const _HomeTrustSection();
+class _HomeInfoSection extends StatelessWidget {
+  const _HomeInfoSection();
 
   @override
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Confianza',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            const Text('• Beta abierto en Guadalajara'),
-            const Text('• Plataforma en prueba'),
-            const Text('• Primeras solicitudes serán revisadas manualmente'),
-            const Text('• Servicio enfocado únicamente en gestión de fila y apoyo logístico'),
-            const SizedBox(height: 8),
-            _MetricLine(
-              stream: FirestoreTaskService.instance.streamUsersCount(),
-              label: 'Usuarios registrados',
-            ),
-            _MetricLine(
-              stream: FirestoreTaskService.instance.streamTasksPublishedCount(),
-              label: 'Solicitudes publicadas',
-            ),
-            _MetricLine(
-              stream: FirestoreTaskService.instance.streamTasksCompletedCount(),
-              label: 'Tareas completadas',
-            ),
-            _MetricLine(
-              stream: FirestoreTaskService.instance.streamReferenceCasesCount(),
-              label: 'Casos de referencia',
-            ),
-          ],
-        ),
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+        title: Text('Información adicional', style: Theme.of(context).textTheme.titleMedium),
+        childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+        children: [
+          Text('Seguridad y recomendaciones', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 4),
+          const Text('• Proyecto piloto en Guadalajara. Coordina siempre por la plataforma.'),
+          const SizedBox(height: 10),
+          Text('Texto para compartir', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 4),
+          const Text('QueueGo MX: publica una tarea o únete como Runner en Guadalajara.'),
+          const SizedBox(height: 10),
+          Text('Precios de referencia', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 4),
+          StreamBuilder<int>(
+            stream: FirestoreTaskService.instance.streamTasksCompletedCount(),
+            builder: (context, snapshot) {
+              final completed = snapshot.data ?? 0;
+              if (completed <= 0) {
+                return const Text('Aún no hay tareas completadas.');
+              }
+              return Text('Tareas completadas registradas: $completed');
+            },
+          ),
+        ],
       ),
-    );
-  }
-}
-
-class _MetricLine extends StatelessWidget {
-  const _MetricLine({required this.stream, required this.label});
-
-  final Stream<int> stream;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<int>(
-      stream: stream,
-      builder: (context, snapshot) {
-        final count = snapshot.data ?? 0;
-        if (count <= 0) return const SizedBox.shrink();
-        return Text('• $label: $count');
-      },
     );
   }
 }
