@@ -8,6 +8,7 @@ class AppStrings {
   static const supportedLocales = [
     Locale('es', 'MX'),
     Locale('en'),
+    Locale('zh', 'TW'),
   ];
 
   static AppStrings of(BuildContext context) {
@@ -535,17 +536,20 @@ class AppStrings {
     'zh-TW': {
       'firebaseMockNotice': '任務會安全儲存在平台中。',
       'appName': 'QueueGo MX',
-      'sloganMvp': '省下時間—我們替你排隊',
-      'sloganSubtitle': '媒合可協助排隊、辦事與等待的人。',
+      'sloganMvp': 'QueueGo MX 連接需要排隊協助的人與在 Guadalajara 的接案者',
+      'sloganSubtitle': '發布任務或成為接案者。此為 Guadalajara 測試版本。',
       'chooseLanguage': '選擇語言',
-      'customer': '我要發任務',
-      'runner': '我要接任務',
+      'publishTaskDesc': '發布需求，等待接案者查看',
+      'runnerDesc': '查看任務並賺取報酬',
+      'taskListDesc': '查看目前開放的任務',
+      'customer': '發布任務',
+      'runner': '成為接案者',
       'admin': '管理員',
       'customerSubtitle': '發佈任務並追蹤狀態',
       'runnerSubtitle': '接單、回報、議價與完成',
       'completedHistoryTitle': '已完成任務案例',
       'completedHistorySubtitle': '包含參考案例與實際完成任務，可作為發布或接單時的價格與時間參考。',
-      'adminSubtitle': '管理面板',
+      'adminSubtitle': '管理後台',
       'adminPanelInternal': 'Admin Console',
       'terms': '服務條款',
       'termsTitle': '服務條款',
@@ -586,6 +590,7 @@ class AppStrings {
       'loadFailed': '讀取失敗',
       'loadDataRetry': '資料讀取失敗，請稍後再試',
       'status': '狀態',
+      'noTasks': '目前尚無完成任務',
       'noTasksYet': '目前還沒有任務。',
       'availableTasks': '可接任務',
       'acceptTask': '接單',
@@ -723,6 +728,7 @@ class AppStrings {
       'status_completed': 'completed',
       'status_cancelled': 'cancelled',
       'loginAction': '登入',
+      'logout': '登出',
       'logoutAction': '登出',
       'logoutDone': '已登出，系統已自動切回匿名登入。',
       'loginStatusTitle': '登入狀態',
@@ -786,7 +792,7 @@ class AppStrings {
     final tag = locale.countryCode == null
         ? locale.languageCode
         : '${locale.languageCode}-${locale.countryCode}';
-    return _localized[tag]?[key] ?? _localized['en']![key] ?? key;
+    return _localized[tag]?[key] ?? _localized['es-MX']![key] ?? key;
   }
 
   String statusLabel(String statusKey) => t('status_$statusKey');

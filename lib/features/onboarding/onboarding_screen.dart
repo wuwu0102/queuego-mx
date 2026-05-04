@@ -221,16 +221,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
-              children: [
-                ActionChip(
-                  label: const Text('Español MX'),
-                  onPressed: () => widget.onLocaleChanged(const Locale('es', 'MX')),
-                ),
-                ActionChip(
-                  label: const Text('English'),
-                  onPressed: () => widget.onLocaleChanged(const Locale('en')),
-                ),
-              ],
+              children: _languageChips(showChinese: false),
             ),
             const SizedBox(height: 20),
             _HomeActionCard(
@@ -315,16 +306,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
-            children: [
-              ActionChip(
-                label: const Text('Español MX'),
-                onPressed: () => widget.onLocaleChanged(const Locale('es', 'MX')),
-              ),
-              ActionChip(
-                label: const Text('English'),
-                onPressed: () => widget.onLocaleChanged(const Locale('en')),
-              ),
-            ],
+            children: _languageChips(showChinese: showAdmin),
           ),
           const SizedBox(height: 20),
           _HomeActionCard(
@@ -393,6 +375,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       return '${name[0]}***@${parts.last}';
     }
     return '${name.substring(0, 2)}***@${parts.last}';
+  }
+
+  List<Widget> _languageChips({required bool showChinese}) {
+    return [
+      ActionChip(
+        label: const Text('Español MX'),
+        onPressed: () => widget.onLocaleChanged(const Locale('es', 'MX')),
+      ),
+      ActionChip(
+        label: const Text('English'),
+        onPressed: () => widget.onLocaleChanged(const Locale('en')),
+      ),
+      if (showChinese)
+        ActionChip(
+          label: const Text('中文'),
+          onPressed: () => widget.onLocaleChanged(const Locale('zh', 'TW')),
+        ),
+    ];
   }
 }
 
